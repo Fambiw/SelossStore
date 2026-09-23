@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Seloss Store - Top up game, streaming premium, editing tools. Cepat, Simple, Tanpa Ribet!">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Seloss Store">
+  <meta name="keywords" content="top up, ML, free fire, netflix, spotify, canva, seloss, digital">
+  <title>Seloss Store — Cepat • Simple • Tanpa Ribet</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<!-- ========================================================
+     LOADING SCREEN
+======================================================== -->
+<div id="ls">
+  <div class="ls-logo">Seloss Store</div>
+  <div class="ls-tag">Cepat &bull; Simple &bull; Tanpa Ribet</div>
+  <div class="ls-spin"></div>
+</div>
+
+<!-- ========================================================
+     TOAST CONTAINER
+======================================================== -->
+<div id="tc"></div>
+
+<!-- ========================================================
+     AUTH SECTION
+======================================================== -->
+<div id="auth" style="display:none"></div>
+
+<!-- ========================================================
+     APP SECTION
+======================================================== -->
+<div id="app" style="display:none">
+
+  <!-- NAVBAR -->
+  <nav class="nav">
+    <button class="nav-hbg" id="hbg" onclick="tglSB()" aria-label="Menu"><i class="bi bi-list"></i></button>
+    <div class="nav-brand" onclick="R.go('home')" style="cursor:pointer">Seloss</div>
+    <div class="nav-search">
+      <i class="bi bi-search s-ico"></i>
+      <input type="text" id="srch-inp" placeholder="Cari produk..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch()">
+    </div>
+    <div class="nav-acts">
+      <button class="nav-ico" onclick="tglMobSearch()" title="Cari" style="display:none" id="mob-srch-btn"><i class="bi bi-search"></i></button>
+      <button class="nav-ico" onclick="R.go('history')" title="Transaksi"><i class="bi bi-receipt"></i></button>
+      <div class="nav-av" id="nav-av" onclick="R.go('profile')" title="Profil"></div>
+    </div>
+  </nav>
+
+  <!-- MOBILE SEARCH BAR -->
+  <div class="mob-sb" id="mob-sb" style="position:relative">
+    <i class="bi bi-search s-ico"></i>
+    <input type="text" id="mob-srch-inp" placeholder="Cari produk..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch()">
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sb" id="sb">
+    <div class="sb-content">
+      <div class="sb-label">Menu Utama</div>
+      <button class="sb-item" id="sbi-home" onclick="R.go('home')"><i class="bi bi-house-fill si"></i><span>Beranda</span></button>
+      <button class="sb-item" id="sbi-hist" onclick="R.go('history')"><i class="bi bi-receipt si"></i><span>Transaksi</span></button>
+      <button class="sb-item" id="sbi-prof" onclick="R.go('profile')"><i class="bi bi-person-fill si"></i><span>Profil Saya</span></button>
+      <div class="sb-label">Kategori</div>
+      <button class="sb-item" onclick="gocat('lagiramee')"><i class="bi bi-fire si"></i><span>Lagi Ramee</span></button>
+      <button class="sb-item" onclick="gocat('streaming')"><i class="bi bi-play-circle-fill si"></i><span>Streaming</span></button>
+      <button class="sb-item" onclick="gocat('editing')"><i class="bi bi-palette-fill si"></i><span>Editing</span></button>
+      <div class="sb-label" id="sb-admin-lbl" style="display:none">Administrator</div>
+      <button class="sb-item" id="sbi-adm" onclick="R.go('admin')" style="display:none"><i class="bi bi-shield-fill si"></i><span>Admin Panel</span></button>
+      <div class="sb-label">Akun</div>
+      <button class="sb-item" onclick="Auth.logout()" style="color:#fca5a5"><i class="bi bi-box-arrow-left si"></i><span>Logout</span></button>
+    </div>
+  </aside>
+  <div class="sb-ov" id="sb-ov" onclick="closeSB()"></div>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="main"></main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bn">
+    <div class="bn-inner">
+      <button class="bn-it" id="bni-home" onclick="R.go('home')"><i class="bi bi-house-fill"></i><span>Beranda</span></button>
+      <button class="bn-it" id="bni-hist" onclick="R.go('history')"><i class="bi bi-receipt"></i><span>Transaksi</span></button>
+      <button class="bn-it" id="bni-prof" onclick="R.go('profile')"><i class="bi bi-person-fill"></i><span>Profil</span></button>
+      <button class="bn-it" id="bni-adm" onclick="R.go('admin')" style="display:none"><i class="bi bi-shield-fill"></i><span>Admin</span></button>
+    </div>
+  </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

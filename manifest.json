@@ -1,0 +1,31 @@
+{
+  "name": "Seloss Store",
+  "short_name": "Seloss",
+  "description": "Platform digital: top up game, streaming premium, tools editing. Cepat, Simple, Tanpa Ribet!",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#2563EB",
+  "orientation": "portrait-primary",
+  "lang": "id",
+  "categories": ["shopping", "entertainment"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Beranda",
+      "short_name": "Home",
+      "description": "Kembali ke halaman utama",
+      "url": "./index.html",
+      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+    }
+  ]
+}
