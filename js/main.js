@@ -61,6 +61,58 @@ function updNav(){
 function tglSB(){$('sb').classList.toggle('open');$('sb-ov').classList.toggle('show')}
 function closeSB(){$('sb').classList.remove('open');$('sb-ov').classList.remove('show')}
 function gocat(c){St.cat=c;R.go('home');closeSB()}
+function openPriceModal(id){
+  const p=DB.prods().find(pr=>pr.id===id);
+  if(!p)return;
+  const sheet=$('pl-sheet');
+  const modal=$('pl-modal');
+  if(!sheet||!modal)return;
+  const imgHtml = p.image
+    ? `<img src="${p.image}" alt="${esc(p.name)}" class="pl-prod-img" onerror="this.src='';this.style.display='none'">`
+    : `<div class="pl-prod-img-fb">${esc(p.name.charAt(0))}</div>`;
+  sheet.innerHTML=`
+    <div class="pl-hdr">
+      <div class="pl-prod-info">
+        <div class="pl-prod-thumb">${imgHtml}</div>
+        <div class="pl-prod-ttl">${esc(p.name)}</div>
+      </div>
+      <button class="pl-close" onclick="closePriceModal()">×</button>
+    </div>
+    <div class="pl-title">Pilih Paket</div>
+    <div class="pl-vars">
+      ${p.vars.map(v=>`
+        <div class="pl-var" onclick="selectPriceAndGo('${p.id}','${v.id}')">
+          <div class="pl-var-name">${esc(v.n)}</div>
+          <div class="pl-var-price">${fmt(v.p)}</div>
+          <i class="bi bi-chevron-right pl-var-arrow"></i>
+        </div>`).join('')}
+    </div>`;
+  modal.classList.add('show');
+  requestAnimationFrame(()=>sheet.classList.add('slide-up'));
+}
+function closePriceModal(e){
+  if(e&&e.target!==e.currentTarget)return;
+  const modal=$('pl-modal'),sheet=$('pl-sheet');
+  if(!modal)return;
+  sheet?.classList.remove('slide-up');
+  setTimeout(()=>modal.classList.remove('show'),280);
+}
+function selectPriceAndGo(pid,vid){
+  const p=DB.prods().find(pr=>pr.id===pid);
+  const v=p?.vars.find(vr=>vr.id===vid);
+  if(!p||!v)return;
+  St.resetCo();
+  St.co.prod=p;
+  St.co.variant=v;
+  St.co.step=3;
+  // Close modal then navigate
+  const modal=$('pl-modal'),sheet=$('pl-sheet');
+  sheet?.classList.remove('slide-up');
+  setTimeout(()=>{
+    if(modal)modal.classList.remove('show');
+    R.go('checkout');
+  },200);
+}
 
 // ── SEARCH ───────────────────────────────────────────────────
 let mobSrchOpen=false;
@@ -171,56 +223,55 @@ const Pages={
   // HOME
   home(){
     const prods=DB.prods(),banners=sampleBanners();
-    const flashP=prods.filter(p=>p.flash);
     let cat=St.cat,q=St.q.toLowerCase();
+    const cats=[
+      {id:'semuaan',lbl:'Semuaan'},
+      {id:'larisann',lbl:'Larisann'},
+      {id:'ngeditann',lbl:'Ngeditann'},
+      {id:'streamingann',lbl:'Streamingann'},
+      {id:'ai-ann',lbl:'AI-ann'}
+    ];
     let filtered=prods;
-    if(cat!=='all')filtered=filtered.filter(p=>p.cat===cat);
+    if(cat!=='semuaan')filtered=filtered.filter(p=>Array.isArray(p.cat)?p.cat.includes(cat):p.cat===cat);
     if(q)filtered=filtered.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
-    const cats=[{id:'all',lbl:'Semua',ico:'🏪'},{id:'lagiramee',lbl:'Lagi Ramee',ico:'🎮'},{id:'streaming',lbl:'Streaming',ico:'🎬'},{id:'editing',lbl:'Editing',ico:'✏️'}];
     return`
     <div class="bsl"><div class="bsl-trk" id="bsl-trk"></div><div class="bsl-dots" id="bsl-dots"></div><button class="bsl-nav bsl-prev" onclick="goSl((BslIdx-1+${banners.length})%${banners.length})"><i class="bi bi-chevron-left"></i></button><button class="bsl-nav bsl-next" onclick="goSl((BslIdx+1)%${banners.length})"><i class="bi bi-chevron-right"></i></button></div>
-    ${flashP.length?`<div class="tb">
-      <div class="tb-hdr"><div class="tb-lft"><span style="font-size:1.4rem">⚡</span><div class="tb-logo">Terbatass!</div><div class="tb-badge">FLASH SALE</div></div>
-      <div class="cdbox" id="tb-cd"><div class="cdu"><div class="cdn">--</div><div class="cdl">Jam</div></div><div class="cds">:</div><div class="cdu"><div class="cdn">--</div><div class="cdl">Mnt</div></div><div class="cds">:</div><div class="cdu"><div class="cdn">--</div><div class="cdl">Dtk</div></div></div></div>
-      <div class="fscroll">${flashP.map(p=>{const v=p.vars[0],d=disc(v.o,v.p),stk=Math.min(100,(v.stk/200)*100);return`<div class="fc" onclick="openProd('${p.id}')"><div class="fc-disc">${d?'-'+d+'%':''}</div><span class="fc-ico">${p.icon}</span><div class="fc-nm">${esc(p.name)}</div>${v.o>v.p?`<div class="fc-og">${fmt(v.o)}</div>`:''}
-      <div class="fc-pr">${fmt(v.p)}</div><div class="fc-stk"><div class="fc-bar"><div class="fc-fill" style="width:${stk}%"></div></div><div class="fc-stxt">Sisa ${v.stk} slot</div></div></div>`}).join('')}</div></div>`:''} 
     <div class="sh"><div class="sh-ttl"><span>📦</span>Kategori</div></div>
-    <div class="cats">${cats.map(c=>`<div class="cat${St.cat===c.id?' act':''}" onclick="filterCat('${c.id}')"><span class="ci">${c.ico}</span><span class="cn">${c.lbl}</span></div>`).join('')}</div>
+    <div class="cats">${cats.map(c=>`<button class="cat-tab${St.cat===c.id?' act':''}" onclick="filterCat('${c.id}')">${c.lbl}</button>`).join('')}</div>
     ${q?`<div style="margin-bottom:12px;font-size:.875rem;color:var(--gy)">Hasil pencarian "<strong>${esc(q)}</strong>" — ${filtered.length} produk <a href="#" style="color:var(--ac);font-size:.8rem;margin-left:6px" onclick="clearSrch();return false">✕ Hapus</a></div>`:''}
-    <div class="sh"><div class="sh-ttl"><span>${cat==='lagiramee'?'🎮':cat==='streaming'?'🎬':cat==='editing'?'✏️':'🛍️'}</span>${cat==='lagiramee'?'Lagi Ramee':cat==='streaming'?'Streaming':cat==='editing'?'Editing':'Semua Produk'}</div><span style="font-size:.78rem;color:var(--gy)">${filtered.length} produk</span></div>
-    ${filtered.length===0?`<div class="empty-st"><span class="ei">🔍</span><h3>Produk tidak ditemukan</h3><p>Coba kata kunci lain atau kategori berbeda</p></div>`:`<div class="pgrid" id="pgrid"><div class="pgrid">${skelCards(filtered.length)}</div></div>`}`;
+    <div class="sh"><div class="sh-ttl"><span>🛍️</span>${cats.find(c=>c.id===cat)?.lbl||'Semuaan'}</div><span style="font-size:.78rem;color:var(--gy)">${filtered.length} layanan</span></div>
+    ${filtered.length===0?`<div class="empty-st"><span class="ei">🔍</span><h3>Produk tidak ditemukan</h3><p>Coba kata kunci lain atau kategori berbeda</p></div>`:`<div class="pgrid" id="pgrid">${skelCards(filtered.length)}</div>`}
+    <div class="pl-modal" id="pl-modal" onclick="closePriceModal(event)"><div class="pl-sheet" id="pl-sheet"></div></div>`;
   },
+
 
   afterHome(){
     initBsl(sampleBanners());
-    const prods=DB.prods();
-    const flashP=prods.filter(p=>p.flash);
-    if(flashP.length){const nearEnd=Math.min(...flashP.map(p=>p.flashEnd));startCD(nearEnd,'tb-cd')}
     // Render actual products after skeleton
     setTimeout(()=>{
       const pg=$('pgrid');if(!pg)return;
       const filtered=this._filtered();
       pg.innerHTML=filtered.map(p=>this.pcard(p)).join('');
-    },400);
+    },350);
   },
 
   _filtered(){
     const prods=DB.prods();let cat=St.cat,q=St.q.toLowerCase();
     let f=prods;
-    if(cat!=='all')f=f.filter(p=>p.cat===cat);
+    if(cat!=='semuaan')f=f.filter(p=>Array.isArray(p.cat)?p.cat.includes(cat):p.cat===cat);
     if(q)f=f.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
     return f;
   },
 
   pcard(p){
-    const minV=p.vars.reduce((a,b)=>a.p<b.p?a:b);
-    const d=disc(minV.o,minV.p),b=getBadge(p.badge);
-    return`<div class="pcard" onclick="openProd('${p.id}')">
-      <div class="pc-img">${b?`<div class="pc-badge ${b.cls}">${b.lbl}</div>`:''}<span style="position:relative;z-index:1;font-size:3rem">${p.icon}</span></div>
-      <div class="pc-body"><div class="pc-nm">${esc(p.name)}</div>
-      <div class="pc-rt"><span class="star">★</span>${p.rating} <span>•</span> ${p.sold.toLocaleString('id-ID')} terjual</div>
-      <div class="pc-prices"><span class="pc-price">${fmt(minV.p)}</span>${minV.o>minV.p?`<span class="pc-orig">${fmt(minV.o)}</span>`:''}${d?`<span class="pc-d">-${d}%</span>`:''}</div>
-      <button class="pc-btn">Beli Sekarang</button></div></div>`;
+    const imgHtml = p.image
+      ? `<img src="${p.image}" alt="${esc(p.name)}" class="pc-img-file" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+         <div class="pc-img-fb" style="display:none">${esc(p.name.charAt(0))}</div>`
+      : `<div class="pc-img-fb">${esc(p.name.charAt(0))}</div>`;
+    return`<div class="pcard" onclick="openPriceModal('${p.id}')">
+      <div class="pc-img-wrap">${imgHtml}</div>
+      <div class="pc-name">${esc(p.name)}</div>
+    </div>`;
   },
 
   // DETAIL
@@ -229,8 +280,8 @@ const Pages={
     if(!p)return`<div class="empty-st"><span class="ei">❌</span><h3>Produk tidak ditemukan</h3><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
     St.co.prod=p;St.co.variant=p.vars[0];St.co.step=2;
     return`<div class="ph"><button class="back-btn" onclick="R.go('home')"><i class="bi bi-arrow-left"></i></button><div class="ph-ttl">Detail Produk</div></div>
-    <div class="dt-hdr"><div class="dt-ico">${p.icon}</div><div class="dt-info"><div class="dt-nm">${esc(p.name)}</div>
-    <div class="dt-rt"><span class="star">★</span>${p.rating} &nbsp;•&nbsp; <i class="bi bi-bag-check-fill"></i> ${p.sold.toLocaleString('id-ID')} terjual${p.flash?` &nbsp;•&nbsp; <span style="color:#FFD700">⚡ Flash Sale!</span>`:''}</div>
+    <div class="dt-hdr"><div class="dt-ico">📦</div><div class="dt-info"><div class="dt-nm">${esc(p.name)}</div>
+    <div class="dt-rt"><span class="star">★</span>${p.rating} &nbsp;•&nbsp; <i class="bi bi-bag-check-fill"></i> ${p.sold?.toLocaleString('id-ID')} terjual${p.flash?` &nbsp;•&nbsp; <span style="color:#FFD700">⚡ Flash Sale!</span>`:''}</div>
     <div class="dt-desc">${esc(p.desc)}</div></div></div>
     ${p.flash?`<div style="background:linear-gradient(135deg,#10052a,#0a1628);border-radius:var(--r3);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><span style="font-size:1.4rem">⏳</span><div><div style="font-size:.7rem;color:rgba(255,255,255,.45);margin-bottom:4px">FLASH SALE BERAKHIR DALAM</div><div id="dt-cd" class="cdbox" style="display:inline-flex"></div></div></div>`:''}
     <div class="scont" style="margin-bottom:14px"><div class="stttl"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--pr)"></i> Pilih Paket</div>
@@ -265,21 +316,17 @@ const Pages={
   },
 
   st2(p,v){return`<div class="stcont"><div class="stttl"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--pr)"></i> Pilih Varian Produk</div>
-    <div class="ibox" style="margin-bottom:16px"><span class="ibox-i">${p.icon}</span><div><strong>${esc(p.name)}</strong><br><span style="font-size:.8rem">Pilih paket yang kamu mau 👇</span></div></div>
-    <div class="vars-grid" id="vg-co">${p.vars.map(vv=>`<div class="var-card${vv.id===v.id?' sel':''}" onclick="coSelVar('${vv.id}')"><div class="var-nm">${esc(vv.n)}</div><div class="var-pr">${fmt(vv.p)}</div>${vv.o>vv.p?`<div class="var-og">${fmt(vv.o)}</div><div class="var-disc">-${disc(vv.o,vv.p)}%</div>`:''} ${vv.stk<=10?`<div class="var-low">⚠️ Sisa ${vv.stk}!</div>`:''}</div>`).join('')}</div>
+    <div class="ibox" style="margin-bottom:16px"><span class="ibox-i">📦</span><div><strong>${esc(p.name)}</strong><br><span style="font-size:.8rem">Pilih paket yang kamu mau 👇</span></div></div>
+    <div class="vars-grid" id="vg-co">${p.vars.map(vv=>`<div class="var-card${vv.id===v.id?' sel':''}" onclick="coSelVar('${vv.id}')"><div class="var-nm">${esc(vv.n)}</div><div class="var-pr">${fmt(vv.p)}</div></div>`).join('')}</div>
     <button class="btn-pr" style="width:100%;margin-top:8px" onclick="coNext()">Lanjutkan <i class="bi bi-arrow-right"></i></button></div>`},
 
   st3(p,v){
     const u=Auth.cu;
     return`<div class="stcont"><div class="stttl"><i class="bi bi-person-fill" style="color:var(--pr)"></i> Isi Data Pembeli</div>
-    <div class="ibox" style="margin-bottom:18px"><span class="ibox-i">${p.icon}</span><div><strong>${esc(p.name)}</strong> — ${esc(v.n)}<br><span style="font-size:.8rem;font-weight:700;color:var(--pr)">${fmt(v.p)}</span></div></div>
+    <div class="ibox" style="margin-bottom:18px"><span class="ibox-i">📦</span><div><strong>${esc(p.name)}</strong> — ${esc(v.n)}<br><span style="font-size:.8rem;font-weight:700;color:var(--pr)">${fmt(v.p)}</span></div></div>
     <div class="fg"><label class="flbl">Nama Lengkap <span class="req">*</span></label><input class="finp" id="f-name" type="text" placeholder="Nama kamu" value="${esc(u?.name||'')}"><div class="ferr" id="err-name">Nama tidak boleh kosong</div></div>
     <div class="fg"><label class="flbl">No. WhatsApp Aktif <span class="req">*</span></label><input class="finp" id="f-wa" type="tel" placeholder="08xxxxxxxxxx" value="${esc(u?.phone||'')}"><div class="fhint">Format: 08xxx atau 628xxx</div><div class="ferr" id="err-wa">Format nomor WA tidak valid</div></div>
     <div class="fg"><label class="flbl">Email Aktif <span class="req">*</span></label><input class="finp" id="f-em" type="email" placeholder="email@kamu.com" value="${esc(u?.email||'')}"><div class="ferr" id="err-em">Format email tidak valid</div></div>
-    ${p.dynF&&p.dynF.length?`<div style="border-top:1px solid var(--gy4);padding-top:14px;margin-top:6px;margin-bottom:4px"><div style="font-size:.82rem;font-weight:600;color:var(--dk3);margin-bottom:10px"><i class="bi bi-info-circle-fill" style="color:var(--pr)"></i> Data Tambahan</div>
-    ${p.dynF.map(f=>`<div class="fg"><label class="flbl">${esc(f.lbl)} ${f.req?'<span class="req">*</span>':'<span style="color:var(--gy2);font-size:.72rem">(opsional)</span>'}</label>
-    <input class="finp" id="f-${f.id}" type="text" placeholder="${esc(f.ph)}" value="${esc(St.co.form['f-'+f.id]||'')}">
-    ${f.req?`<div class="ferr" id="err-${f.id}">${esc(f.lbl)} wajib diisi</div>`:''}</div>`).join('')}</div>`:''}
     <button class="btn-pr" style="width:100%" onclick="coNext()">Lanjutkan <i class="bi bi-arrow-right"></i></button></div>`;
   },
 
@@ -323,7 +370,7 @@ const Pages={
     const waMsg=buildWA(p,v,cd);
     const waLink=`https://wa.me/${CFG.adminWA}?text=${encodeURIComponent(waMsg)}`;
     if(!cd.txId){
-      const tx={id:gid('tx'),userId:Auth.cu.id,userName:cd.form['f-name']||Auth.cu?.name||'',userWA:cd.form['f-wa']||'',userEmail:cd.form['f-em']||'',productId:p.id,productName:p.name,productIcon:p.icon,variantId:v.id,variantName:v.n,amount:v.p,paymentMethod:cd.pm,formData:cd.form,proofImage:cd.proof?'uploaded':null,status:'pending',waMessage:waMsg,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+      const tx={id:gid('tx'),userId:Auth.cu.id,userName:cd.form['f-name']||Auth.cu?.name||'',userWA:cd.form['f-wa']||'',userEmail:cd.form['f-em']||'',productId:p.id,productName:p.name,productIcon:p.image,variantId:v.id,variantName:v.n,amount:v.p,paymentMethod:cd.pm,formData:cd.form,proofImage:cd.proof?'uploaded':null,status:'pending',waMessage:waMsg,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
       DB.upsertTx(tx);St.co.txId=tx.id;
     }
     const pm=PMETHODS.find(m=>m.id===cd.pm);
@@ -375,7 +422,7 @@ const Pages={
     return`<div class="ph"><div class="ph-ttl">${Auth.isAdm()?'📋 Semua Transaksi':'📋 Riwayat Transaksi'}</div></div>
     ${myTxs.length===0?`<div class="empty-st"><span class="ei">🛍️</span><h3>Belum ada transaksi</h3><p>Yuk beli produk pertamamu!</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Belanja Sekarang</button></div>`:`
     <div>${myTxs.map(tx=>`<div class="txcard" onclick="showTxD('${tx.id}')">
-      <div class="tx-ico">${tx.productIcon||'📦'}</div>
+      <div class="tx-ico">${tx.productIcon?`<img src="${tx.productIcon}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:'📦'}</div>
       <div class="tx-inf"><div class="tx-nm">${esc(tx.productName)}</div>
       <div class="tx-sub">${esc(tx.variantName)} • ${fdt(tx.createdAt)}</div>
       ${Auth.isAdm()?`<div class="tx-sub" style="color:var(--pr);font-weight:500">👤 ${esc(tx.userName)}</div>`:''}
@@ -432,7 +479,7 @@ const Pages={
     if(!txs.length)return'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gy)">Belum ada transaksi</td></tr>';
     return txs.map(tx=>`<tr>
       <td style="font-size:.7rem;color:var(--gy);font-family:monospace">${tx.id.slice(-8)}</td>
-      <td><div style="font-weight:600;font-size:.83rem">${tx.productIcon||'📦'} ${esc(tx.productName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.variantName)}</div></td>
+      <td><div style="font-weight:600;font-size:.83rem">${tx.productIcon?`<img src="${tx.productIcon}" style="width:20px;height:20px;vertical-align:middle;border-radius:4px;margin-right:4px">`:'📦'} ${esc(tx.productName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.variantName)}</div></td>
       <td><div style="font-size:.83rem;font-weight:500">${esc(tx.userName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.userWA||'-')}</div></td>
       <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
       <td style="font-size:.8rem">${PMETHODS.find(m=>m.id===tx.paymentMethod)?.name||tx.paymentMethod||'-'}</td>
@@ -489,7 +536,7 @@ function demoLogin(role){
 
 // ── HOME ─────────────────────────────────────────────────────
 function filterCat(c){St.cat=c;R.go('home')}
-function openProd(id){St.resetCo();R.go('detail',{productId:id})}
+function openProd(id){openPriceModal(id)}
 function selVar(pid,vid){
   const p=DB.prods().find(pr=>pr.id===pid),v=p?.vars.find(vr=>vr.id===vid);
   if(!p||!v)return;
@@ -506,7 +553,7 @@ function startCo(){
 // ── CHECKOUT ─────────────────────────────────────────────────
 function coBk(){
   const cd=St.co;
-  if(cd.step<=2)R.go('detail',{productId:cd.prod?.id});
+  if(cd.step<=3)R.go('home');
   else{cd.step--;R.go('checkout')}
 }
 
@@ -519,10 +566,8 @@ function coNext(){
     if(!nm){$('err-name')?.classList.add('show');err=true}else $('err-name')?.classList.remove('show');
     if(!wa||!vWA(wa)){$('err-wa')?.classList.add('show');err=true}else $('err-wa')?.classList.remove('show');
     if(!em||!vEmail(em)){$('err-em')?.classList.add('show');err=true}else $('err-em')?.classList.remove('show');
-    if(cd.prod.dynF)cd.prod.dynF.forEach(f=>{const val=$('f-'+f.id)?.value.trim(),ee=$('err-'+f.id);if(f.req&&!val){if(ee)ee.classList.add('show');err=true}else if(ee)ee.classList.remove('show')});
     if(err){toast('Mohon lengkapi semua data yang diperlukan','warning');return}
     cd.form['f-name']=nm;cd.form['f-wa']=nWA(wa);cd.form['f-em']=em;
-    if(cd.prod.dynF)cd.prod.dynF.forEach(f=>{cd.form['f-'+f.id]=$('f-'+f.id)?.value.trim()||''});
     cd.step=4;R.go('checkout');return;
   }
   if(cd.step===4){if(!cd.pm){toast('Pilih metode pembayaran dulu!','warning');return}cd.step=5;R.go('checkout');return}
@@ -574,7 +619,7 @@ function showTxD(txId){
   const modal=$('tx-modal'),mc=$('tx-mc');if(!modal||!mc)return;
   const pm=PMETHODS.find(m=>m.id===tx.paymentMethod);
   mc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem">📋 Detail Transaksi</div><button onclick="closeTxM()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--gy)">×</button></div>
-  <div style="font-size:2.5rem;text-align:center;margin-bottom:10px">${tx.productIcon||'📦'}</div>
+  <div style="text-align:center;margin-bottom:10px">${tx.productIcon?`<img src="${tx.productIcon}" style="width:64px;height:64px;border-radius:12px;object-fit:cover">`:'<span style="font-size:2.5rem">📦</span>'}</div>
   <div style="text-align:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem">${esc(tx.productName)}</div><div style="font-size:.8rem;color:var(--gy)">${esc(tx.variantName)}</div><div style="margin-top:8px">${sbdg(tx.status)}</div></div>
   <div style="background:var(--gy5);border-radius:var(--r2);padding:14px;font-size:.83rem">
     ${[['ID Transaksi',`<span style="font-family:monospace;font-size:.72rem">${tx.id}</span>`],['Tanggal',fdt(tx.createdAt)],['Pembeli',esc(tx.userName)],['WhatsApp',esc(tx.userWA||'-')],['Email',esc(tx.userEmail||'-')],['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],['Metode',esc(pm?.name||tx.paymentMethod||'-')]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gy4)"><span style="color:var(--gy)">${k}</span><span style="text-align:right;max-width:60%">${v}</span></div>`).join('')}
@@ -772,40 +817,43 @@ function initApp() {
   if (msb) msb.style.display = window.innerWidth <= 480 ? 'flex' : 'none';
 
   // ── Expose ALL functions to window for inline HTML event handlers ──
-  window.R            = R;
-  window.tglSB        = tglSB;
-  window.closeSB      = closeSB;
-  window.gocat        = gocat;
-  window.tglMobSearch = tglMobSearch;
-  window.handleSearch = handleSearch;
-  window.doSearch     = doSearch;
-  window.clearSrch    = clearSrch;
-  window.goSl         = goSl;
-  window.filterCat    = filterCat;
-  window.openProd     = openProd;
-  window.selVar       = selVar;
-  window.startCo      = startCo;
-  window.coBk         = coBk;
-  window.coSelVar     = coSelVar;
-  window.coNext       = coNext;
-  window.selPay       = selPay;
-  window.demoLogin    = demoLogin;
-  window.doLogin      = doLogin;
-  window.doReg        = doReg;
-  window.tglPw        = tglPw;
-  window.doForg       = doForg;
-  window.updTx        = updTx;
-  window.admWA        = admWA;
-  window.fAdmTx       = fAdmTx;
-  window.showTxD      = showTxD;
-  window.closeTxM     = closeTxM;
-  window.saveProf     = saveProf;
-  window.newCo        = newCo;
-  window.afterWA      = afterWA;
-  window.trigUpload   = trigUpload;
-  window.handleFile   = handleFile;
-  window.procFile     = procFile;
-  window.copyT        = copyT;
+  window.R                 = R;
+  window.tglSB             = tglSB;
+  window.closeSB           = closeSB;
+  window.gocat             = gocat;
+  window.tglMobSearch      = tglMobSearch;
+  window.handleSearch      = handleSearch;
+  window.doSearch          = doSearch;
+  window.clearSrch         = clearSrch;
+  window.goSl              = goSl;
+  window.filterCat         = filterCat;
+  window.openProd          = openProd;
+  window.openPriceModal    = openPriceModal;
+  window.closePriceModal   = closePriceModal;
+  window.selectPriceAndGo  = selectPriceAndGo;
+  window.selVar            = selVar;
+  window.startCo           = startCo;
+  window.coBk              = coBk;
+  window.coSelVar          = coSelVar;
+  window.coNext            = coNext;
+  window.selPay            = selPay;
+  window.demoLogin         = demoLogin;
+  window.doLogin           = doLogin;
+  window.doReg             = doReg;
+  window.tglPw             = tglPw;
+  window.doForg            = doForg;
+  window.updTx             = updTx;
+  window.admWA             = admWA;
+  window.fAdmTx            = fAdmTx;
+  window.showTxD           = showTxD;
+  window.closeTxM          = closeTxM;
+  window.saveProf          = saveProf;
+  window.newCo             = newCo;
+  window.afterWA           = afterWA;
+  window.trigUpload        = trigUpload;
+  window.handleFile        = handleFile;
+  window.procFile          = procFile;
+  window.copyT             = copyT;
 
   // Hide loading screen & navigate to home
   setTimeout(() => {

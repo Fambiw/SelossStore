@@ -39,11 +39,9 @@ export const DB = {
   clrSes() { this.d('sl_ses'); },
   
   prods() { 
-    let p = this.g('sl_prods'); 
-    if (!p) {
-      p = sampleProds();
-      this.s('sl_prods', p);
-    }
+    // Always seed from sample data to ensure freshness
+    const p = sampleProds();
+    this.s('sl_prods', p);
     return p;
   },
   setProds(p) { this.s('sl_prods', p); },
