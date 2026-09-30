@@ -808,7 +808,9 @@ function initApp() {
   // Register Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
-      .then(() => console.log('[SW] Registered'))
+      .then((reg) => {
+        reg.update();
+      })
       .catch(() => {});
   }
 
