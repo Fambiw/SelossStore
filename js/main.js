@@ -728,7 +728,7 @@ function initBsl(banners) {
   if (!trk || !dots || !banners.length) return;
 
   trk.innerHTML = banners.map((b) =>
-    `<div class="bsl-sl" style="${b.bg ? `background:${b.bg}` : 'background:linear-gradient(135deg,#1e3a8a,#3730a3)'}">
+    `<div class="bsl-sl" ${b.prodId ? `onclick="openProd('${b.prodId}')"` : ''} style="${b.prodId ? 'cursor:pointer;' : ''}${b.bg ? `background:${b.bg}` : 'background:linear-gradient(135deg,#1e3a8a,#3730a3)'}">
       ${b.image ? `<img src="${b.image}" alt="${esc(b.title || 'Banner')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit">` : ''}
       ${b.title ? `
         <div class="bsl-ov"></div>
