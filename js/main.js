@@ -718,20 +718,26 @@ const R = {
 };
 
 // ============================================================
-//  BANNER SLIDER
+//  BANNER SLIDER (Manual Slide)
 // ============================================================
 let BslIdx = 0;
-let BslTimer = null;
 
 function initBsl(banners) {
   const trk = $('bsl-trk');
   const dots = $('bsl-dots');
   if (!trk || !dots || !banners.length) return;
 
-  trk.innerHTML = banners.map((b, i) =>
-    `<div class="bsl-sl" style="background:${b.bg||'linear-gradient(135deg,#1e3a8a,#3730a3)'}">
-      <div class="bsl-tx"><div class="bsl-tt">${esc(b.title)}</div><div class="bsl-sb">${esc(b.sub)}</div>${b.btn?`<button class="bsl-btn" onclick="filterCat('${b.cat||'all'}')">${esc(b.btn)}</button>`:''}</div>
-      <div class="bsl-ico">${b.icon||''}</div>
+  trk.innerHTML = banners.map((b) =>
+    `<div class="bsl-sl" style="${b.bg ? `background:${b.bg}` : 'background:linear-gradient(135deg,#1e3a8a,#3730a3)'}">
+      ${b.image ? `<img src="${b.image}" alt="${esc(b.title || 'Banner')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit">` : ''}
+      ${b.title ? `
+        <div class="bsl-ov"></div>
+        <div class="bsl-cnt">
+          ${b.tag ? `<span class="bsl-tag">${esc(b.tag)}</span>` : ''}
+          <div class="bsl-ttl">${esc(b.title).replace(/\n/g, '<br>')}</div>
+          ${b.sub ? `<div class="bsl-sub">${esc(b.sub)}</div>` : ''}
+        </div>
+      ` : ''}
     </div>`
   ).join('');
 
@@ -740,7 +746,26 @@ function initBsl(banners) {
   ).join('');
 
   goSl(0);
-  BslTimer = setInterval(() => goSl((BslIdx + 1) % banners.length), 4000);
+
+  // Touch swipe support for mobile
+  const bslBox = document.querySelector('.bsl');
+  if (bslBox && !bslBox.dataset.swipeBound) {
+    bslBox.dataset.swipeBound = '1';
+    let startX = 0;
+    bslBox.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+    }, { passive: true });
+    bslBox.addEventListener('touchend', (e) => {
+      const diffX = startX - e.changedTouches[0].clientX;
+      if (Math.abs(diffX) > 40) {
+        if (diffX > 0) {
+          goSl(BslIdx + 1);
+        } else {
+          goSl(BslIdx - 1);
+        }
+      }
+    }, { passive: true });
+  }
 }
 
 function goSl(idx) {
