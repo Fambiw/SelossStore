@@ -76,4 +76,43 @@ describe('Auth Module', () => {
       expect(Auth.cu.email).toBe('test@example.com');
     });
   });
+
+  describe('Predefined Admin & User Accounts', () => {
+    const { sampleUsers } = require('../js/sample-data.js');
+
+    beforeEach(() => {
+      sampleUsers().forEach(u => DB.upsertU(u));
+    });
+
+    it('should seed admin and 5 user accounts properly', () => {
+      const users = sampleUsers();
+      expect(users.length).toBe(6);
+      
+      const admin = users.find(u => u.role === 'admin');
+      expect(admin).toBeDefined();
+      expect(admin.email).toBe('adminselosS@jimail.com');
+
+      for (let i = 1; i <= 5; i++) {
+        const u = users.find(item => item.email === `user${i}seloss@jimail.com`);
+        expect(u).toBeDefined();
+        expect(u.role).toBe('user');
+      }
+    });
+
+    it('should login admin with adminselosS@jimail.com and Hanyaadmin123', () => {
+      const admin = Auth.login('adminselosS@jimail.com', 'Hanyaadmin123');
+      expect(admin.role).toBe('admin');
+      expect(Auth.cu.email).toBe('adminselosS@jimail.com');
+    });
+
+    it('should login all 5 user accounts with Masuk123', () => {
+      for (let i = 1; i <= 5; i++) {
+        const email = `user${i}seloss@jimail.com`;
+        const user = Auth.login(email, 'Masuk123');
+        expect(user.role).toBe('user');
+        expect(Auth.cu.email).toBe(email);
+      }
+    });
+  });
 });
+

@@ -1,3 +1,5 @@
+import { hs } from './utils.js';
+
 export function sampleProds() {
   return [
     // ── LARISANN (Canva, Capcut, Netflix, ChatGPT) ─────────────────
@@ -117,5 +119,70 @@ export function sampleBanners() {
     { tag: '🎬 Streaming Premium', title: 'Netflix, Disney\n& WeTV Murah!', sub: 'Nonton tanpa batas mulai Rp15.000', bg: 'linear-gradient(135deg,#071a10 0%,#0a1628 60%,#0a1a10 100%)' },
     { tag: '✏️ Editing Tools', title: 'Canva, Capcut\n& Alight Motion!', sub: 'Edit konten profesional harga terjangkau', bg: 'linear-gradient(135deg,#1a0a33 0%,#0a0a28 100%)' },
     { tag: '🤖 AI Premium', title: 'ChatGPT & Gemini\nHarga Terbaik!', sub: 'AI canggih untuk produktivitas harianmu', bg: 'linear-gradient(135deg,#0a1a10 0%,#1a0a33 100%)' },
+  ];
+}
+
+export function sampleUsers() {
+  return [
+    {
+      id: 'admin_001',
+      name: 'Admin Seloss',
+      email: 'adminseloss@jimail.com',
+      passwordHash: hs('Hanyaadmin123'),
+      phone: '6281234567890',
+      avatar: 'A',
+      role: 'admin',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_001',
+      name: 'User 1 Seloss',
+      email: 'user1seloss@jimail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560001',
+      avatar: 'U1',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_002',
+      name: 'User 2 Seloss',
+      email: 'user2seloss@jimail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560002',
+      avatar: 'U2',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_003',
+      name: 'User 3 Seloss',
+      email: 'user3seloss@jimail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560003',
+      avatar: 'U3',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_004',
+      name: 'User 4 Seloss',
+      email: 'user4seloss@jimail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560004',
+      avatar: 'U4',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_005',
+      name: 'User 5 Seloss',
+      email: 'user5seloss@jimail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560005',
+      avatar: 'U5',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    }
   ];
 }
