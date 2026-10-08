@@ -343,13 +343,14 @@ const Pages={
   st5(v,cd){
     const pm=PMETHODS.find(m=>m.id===cd.pm)||PMETHODS[0];
     const isQR=pm.id==='qris';
-    return`<div class="stcont"><div class="stttl"><i class="bi bi-credit-card-fill" style="color:var(--pr)"></i> Informasi Pembayaran</div>
-    <div style="background:var(--gy5);border-radius:var(--r3);padding:20px;text-align:center;margin-bottom:14px">
-      <div style="font-size:2.2rem;margin-bottom:6px">${pm.icon}</div>
-      <div style="font-size:.95rem;font-weight:700;margin-bottom:10px">${esc(pm.name)}</div>
-      ${isQR?`<div class="qr-ph"><svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="5" y="5" width="28" height="28" stroke="white" stroke-width="2.5" fill="none"/><rect x="10" y="10" width="18" height="18" fill="white" opacity=".3"/><rect x="47" y="5" width="28" height="28" stroke="white" stroke-width="2.5" fill="none"/><rect x="52" y="10" width="18" height="18" fill="white" opacity=".3"/><rect x="5" y="47" width="28" height="28" stroke="white" stroke-width="2.5" fill="none"/><rect x="10" y="52" width="18" height="18" fill="white" opacity=".3"/><rect x="47" y="47" width="6" height="6" fill="white" opacity=".5"/><rect x="56" y="47" width="6" height="6" fill="white" opacity=".5"/><rect x="65" y="47" width="10" height="6" fill="white" opacity=".5"/><rect x="47" y="56" width="12" height="6" fill="white" opacity=".5"/><rect x="62" y="56" width="13" height="6" fill="white" opacity=".5"/><rect x="47" y="65" width="6" height="10" fill="white" opacity=".5"/><rect x="56" y="65" width="10" height="10" fill="white" opacity=".5"/><rect x="69" y="65" width="6" height="10" fill="white" opacity=".5"/></svg><span style="font-size:.72rem">Scan QRIS di atas</span></div>`:
-      `<div style="background:white;border-radius:var(--r2);padding:14px;font-size:.9rem;font-weight:600;color:var(--dk);white-space:pre-line">${esc(pm.info)}</div>`}
-    </div>
+    return`<div class="qr-ph">
+  <img
+    src="assett/Payment.jpeg"
+    alt="Kode QR pembayaran QRIS"
+    style="width:145px;height:145px;object-fit:contain"
+  >
+  <span style="font-size:.72rem">Scan QRIS di atas</span>
+</div>
     <div style="background:linear-gradient(135deg,var(--pr),var(--sc));border-radius:var(--r2);padding:16px;text-align:center;margin-bottom:14px">
       <div style="color:rgba(255,255,255,.7);font-size:.78rem;margin-bottom:4px">Total yang harus dibayar</div>
       <div style="color:#fff;font-size:1.8rem;font-weight:900">${fmt(v.p)}</div>
@@ -824,16 +825,20 @@ function copyT(text) {
 //  INIT
 // ============================================================
 function initApp() {
+  console.log('[DEBUG] initApp starting. Current users:', DB.users().map(u => u.email));
   // Seed sample users (admin & 5 default user accounts)
   sampleUsers().forEach(u => {
     const existing = DB.findU(u.email) || DB.findById(u.id);
     if (!existing) {
+      console.log('[DEBUG] Seeding new user:', u.email);
       DB.upsertU(u);
     } else if (existing.id === u.id) {
+      console.log('[DEBUG] Syncing existing predefined user:', u.email);
       // Sync credentials & role for predefined accounts
       DB.upsertU({ ...existing, email: u.email, passwordHash: u.passwordHash, role: u.role });
     }
   });
+  console.log('[DEBUG] initApp finished. Users in DB:', DB.users().map(u => u.email));
 
   // Seed products if not yet stored
   DB.prods();

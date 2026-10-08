@@ -32,7 +32,11 @@ export const Auth = {
   login(email, pw, rem = false) {
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const safePw = typeof pw === 'string' ? pw : '';
+    console.log('[DEBUG] Auth.login called with email:', email, '-> safeEmail:', safeEmail);
+    const users = DB.users();
+    console.log('[DEBUG] DB.users() count:', users.length, 'users:', users.map(u => ({ id: u.id, email: u.email })));
     const u = DB.findU(safeEmail);
+    console.log('[DEBUG] DB.findU result:', u);
     if (!u) throw new Error('Email tidak terdaftar');
     if (u.passwordHash !== hs(safePw)) throw new Error('Password salah');
     
