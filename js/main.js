@@ -335,20 +335,36 @@ const Pages={
     <button class="btn-pr" style="width:100%" onclick="coNext()">Lanjutkan <i class="bi bi-arrow-right"></i></button></div>`;
   },
 
-  st4(cd){return`<div class="stcont"><div class="stttl"><i class="bi bi-wallet2" style="color:var(--pr)"></i> Pilih Metode Pembayaran</div>
-    <div class="pay-grid">${PMETHODS.map(pm=>`<div class="pay-card${cd.pm===pm.id?' sel':''}" onclick="selPay('${pm.id}')"><span class="pay-ico">${pm.icon}</span><div class="pay-nm">${esc(pm.name)}</div></div>`).join('')}</div>
-    <div id="pay-info" style="display:none" class="ibox" style="margin-bottom:14px"><span class="ibox-i">💡</span><div id="pay-info-t"></div></div>
-    <button class="btn-pr" style="width:100%;margin-top:8px" id="btn-np" onclick="coNext()" disabled>Lanjutkan <i class="bi bi-arrow-right"></i></button></div>`},
+ st4(cd) {
+  const card = pm =>
+    `<div class="pay-card${cd.pm === pm.id ? ' sel' : ''}"
+      onclick="selPay('${pm.id}')">
+      <span class="pay-ico">${pm.icon}</span>
+      <div class="pay-nm">${esc(pm.name)}</div>
+    </div>`;
+
+  return `<div class="stcont">
+    <div class="stttl">Pilih Metode Pembayaran</div>
+    <h3>QRIS</h3>
+    <div class="pay-grid pay-grid-qris">
+      ${PMETHODS.filter(pm => pm.id === 'qris').map(card).join('')}
+    </div>
+    <h3>E-Wallet</h3>
+    <div class="pay-grid pay-grid-ewallet">
+      ${PMETHODS.filter(pm => pm.id !== 'qris').map(card).join('')}
+    </div>
+    <button class="btn-pr" style="width:100%;margin-top:8px"
+      id="btn-np" onclick="coNext()" ${cd.pm ? '' : 'disabled'}>
+      Lanjutkan <i class="bi bi-arrow-right"></i>
+    </button>
+  </div>`;
+},
 
   st5(v,cd){
     const pm=PMETHODS.find(m=>m.id===cd.pm)||PMETHODS[0];
     const isQR=pm.id==='qris';
     return`<div class="qr-ph">
-  <img
-    src="assett/Payment.jpeg"
-    alt="Kode QR pembayaran QRIS"
-    style="width:145px;height:145px;object-fit:contain"
-  >
+  <img src="${esc(pm.qrImage)}" alt="Kode QR ${esc(pm.name)}">
 </div>
     <div style="background:linear-gradient(135deg,var(--pr),var(--sc));border-radius:var(--r2);padding:16px;text-align:center;margin-bottom:14px">
       <div style="color:rgba(255,255,255,.7);font-size:.78rem;margin-bottom:4px">Total yang harus dibayar</div>
