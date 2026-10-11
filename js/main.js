@@ -349,7 +349,6 @@ const Pages={
     alt="Kode QR pembayaran QRIS"
     style="width:145px;height:145px;object-fit:contain"
   >
-  <span style="font-size:.72rem">Scan QRIS di atas</span>
 </div>
     <div style="background:linear-gradient(135deg,var(--pr),var(--sc));border-radius:var(--r2);padding:16px;text-align:center;margin-bottom:14px">
       <div style="color:rgba(255,255,255,.7);font-size:.78rem;margin-bottom:4px">Total yang harus dibayar</div>
