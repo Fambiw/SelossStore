@@ -129,11 +129,25 @@ function sbdg(status){
 }
 
 // ── WA MESSAGE ───────────────────────────────────────────────
-function buildWA(p,v,cd){
-  const f=cd.form,pm=PMETHODS.find(m=>m.id===cd.pm);
-  let extra='';
-  if(p.dynF)p.dynF.forEach(field=>{const val=f['f-'+field.id];if(val)extra+=`\n📌 ${field.lbl}: ${val}`});
-  return`Halo Admin Seloss Store! 👋\n\n*Konfirmasi Pesanan Baru*\n━━━━━━━━━━━━━━━━━━━\n📦 Produk: ${p.name}\n📋 Paket: ${v.n}\n💰 Total: ${fmt(v.p)}\n━━━━━━━━━━━━━━━━━━━\n👤 Nama: ${f['f-name']||Auth.cu?.name||'-'}\n📱 WhatsApp: ${f['f-wa']||'-'}\n📧 Email: ${f['f-em']||'-'}${extra}\n━━━━━━━━━━━━━━━━━━━\n💳 Metode: ${pm?.name||cd.pm}\n━━━━━━━━━━━━━━━━━━━\n✅ Bukti transfer sudah diupload.\nMohon segera diproses. Terima kasih! 🙏`;
+function buildWA(p, v, cd){
+  const f = cd.form || {};
+  const customerName = (f['f-name'] || Auth.cu?.name || '').trim() || 'Tidak ada nama';
+  const appName = p?.name || 'Produk';
+  const productDetail = v?.n || 'Detail produk tidak tersedia';
+  const totalText = fmt(v?.p || 0);
+
+  return [
+    'Halo admin, segera diproses ya pesananku...',
+    '',
+    'Rincian pesanan:',
+    `Nama pelanggan: ${customerName}`,
+    `Nama aplikasi: ${appName}`,
+    `Detail aplikasi: ${productDetail}`,
+    '',
+    `Total pembayaran: ${totalText}`,
+    '',
+    'Terima Kasih Adminnn......'
+  ].join('\n');
 }
 
 // ── PRICE SUMMARY HTML ───────────────────────────────────────
@@ -181,7 +195,7 @@ const Pages={
     <button class="a-btn ghost" onclick="demoLogin('admin')" style="margin-top:8px">🛡️ Login Cepat sebagai Admin</button>
     <div style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--gy4);border-radius:10px;font-size:0.75rem;color:var(--t2);line-height:1.6;text-align:left">
       <div style="font-weight:600;color:var(--t1);margin-bottom:4px">🔑 Akun Tersedia:</div>
-      <div>• <strong>Admin:</strong> <code>adminselosS@jimail.com</code> (Password: <code>Hanyaadmin123</code>)</div>
+      <div>• <strong>Admin:</strong> <code>adminseloss@jimail.com</code> (Password: <code>Hanyaadmin123</code>)</div>
       <div>• <strong>User:</strong> <code>user1seloss@jimail.com</code> s/d <code>user5seloss@jimail.com</code> (Password: <code>Masuk123</code>)</div>
     </div>
   </div>`},
@@ -304,19 +318,36 @@ const Pages={
   checkout(){
     const cd=St.co,p=cd.prod,v=cd.variant,step=cd.step;
     if(!p)return`<div class="empty-st"><span class="ei">🛒</span><h3>Tidak ada produk dipilih</h3><p>Silakan pilih produk terlebih dahulu</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
-    const stH=STLBLS.map((lbl,i)=>{const n=i+1,done=n<step,act=n===step;return`${i>0?`<div class="stline${done?' done':''}"></div>`:''}
-    <div class="st-it"><div class="st-c${done?' done':''}${act?' act':''}">${done?'<i class="bi bi-check-lg"></i>':n}</div><div class="st-lb${act?' act':''}">${lbl}</div></div>`}).join('');
-    return`<div class="ph"><button class="back-btn" onclick="coBk()"><i class="bi bi-arrow-left"></i></button><div class="ph-ttl">Checkout — Step ${step}/7</div></div>
-    <div class="stbar">${stH}</div><div id="step-c">${this.stepC(step,p,v,cd)}</div>`;
+
+    return `
+      <div class="checkout-shell">
+        <div class="checkout-head">
+          <button class="back-btn" onclick="coBk()"><i class="bi bi-arrow-left"></i></button>
+          <div class="checkout-head-title">Seloss Store</div>
+        </div>
+        <div class="checkout-stepper">
+          ${STLBLS.map((label, idx) => {
+            const stepNo = idx + 1;
+            const done = stepNo < step;
+            const active = stepNo === step;
+            return `
+              ${idx > 0 ? `<div class="checkout-step-line ${done ? 'done' : ''}"></div>` : ''}
+              <div class="checkout-step-item ${active ? 'active' : ''} ${done ? 'done' : ''}">
+                <div class="checkout-step-badge">${done ? '<i class="bi bi-check-lg"></i>' : stepNo}</div>
+                <span>${label}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="checkout-body">${this.stepC(step,p,v,cd)}</div>
+      </div>
+    `;
   },
 
   stepC(step,p,v,cd){
-    if(step===2)return this.st2(p,v);
-    if(step===3)return this.st3(p,v);
-    if(step===4)return this.st4(cd);
-    if(step===5)return this.st5(v,cd);
-    if(step===6)return this.st6();
-    if(step===7)return this.st7(p,v,cd);
+    if(step===1)return renderFormatStep();
+    if(step===2)return renderPaymentStep();
+    if(step===3)return renderFinishStep();
     return'';
   },
 
@@ -344,14 +375,17 @@ const Pages={
     </div>`;
 
   return `<div class="stcont">
-    <div class="stttl">Pilih Metode Pembayaran</div>
-    <h3>QRIS</h3>
+    <div class="stttl"><i class="bi bi-wallet2" style="color:var(--pr)"></i> Pilih Metode Pembayaran</div>
+    <div class="pay-section-title">QRIS</div>
     <div class="pay-grid pay-grid-qris">
       ${PMETHODS.filter(pm => pm.id === 'qris').map(card).join('')}
     </div>
-    <h3>E-Wallet</h3>
+    <div class="pay-section-title">E-Wallet</div>
     <div class="pay-grid pay-grid-ewallet">
       ${PMETHODS.filter(pm => pm.id !== 'qris').map(card).join('')}
+    </div>
+    <div id="pay-info" class="ibox" style="display:none;margin-bottom:14px">
+      <span class="ibox-i">💡</span><div id="pay-info-t"></div>
     </div>
     <button class="btn-pr" style="width:100%;margin-top:8px"
       id="btn-np" onclick="coNext()" ${cd.pm ? '' : 'disabled'}>
@@ -360,20 +394,27 @@ const Pages={
   </div>`;
 },
 
-  st5(v,cd){
-    const pm=PMETHODS.find(m=>m.id===cd.pm)||PMETHODS[0];
-    const isQR=pm.id==='qris';
-    return`<div class="qr-ph">
-  <img src="${esc(pm.qrImage)}" alt="Kode QR ${esc(pm.name)}">
-</div>
+  st5(v, cd) {
+  const pm = PMETHODS.find(m => m.id === cd.pm) || PMETHODS[0];
+
+  return `<div class="stcont">
+    <div class="stttl"><i class="bi bi-credit-card-fill" style="color:var(--pr)"></i> Informasi Pembayaran</div>
+    <div class="pay-section-title">${esc(pm.name)}</div>
+    <div class="qr-ph">
+      <img src="${esc(pm.qrImage)}" alt="Kode QR ${esc(pm.name)}">
+    </div>
+    <div class="fhint" style="text-align:center;margin:10px 0 16px">
+      Scan QR menggunakan ${esc(pm.name)}
+    </div>
     <div style="background:linear-gradient(135deg,var(--pr),var(--sc));border-radius:var(--r2);padding:16px;text-align:center;margin-bottom:14px">
       <div style="color:rgba(255,255,255,.7);font-size:.78rem;margin-bottom:4px">Total yang harus dibayar</div>
       <div style="color:#fff;font-size:1.8rem;font-weight:900">${fmt(v.p)}</div>
       <div style="color:rgba(255,255,255,.6);font-size:.78rem;margin-top:3px">Transfer tepat sesuai nominal di atas</div>
     </div>
-    <div class="ibox" style="margin-bottom:14px"><span class="ibox-i">⚠️</span><div style="font-size:.82rem">Pastikan transfer tepat sesuai nominal. Jika nominal berbeda, pesanan bisa tertunda. Setelah transfer, klik tombol di bawah.</div></div>
-    <button class="btn-pr" style="width:100%" onclick="coNext()">Sudah Transfer — Upload Bukti <i class="bi bi-arrow-right"></i></button></div>`;
-  },
+    <div class="ibox" style="margin-bottom:14px"><span class="ibox-i">⚠️</span><div style="font-size:.82rem">Pastikan transfer tepat sesuai nominal. Setelah membayar, klik tombol di bawah.</div></div>
+    <button class="btn-pr" style="width:100%" onclick="coNext()">Sudah Transfer — Upload Bukti <i class="bi bi-arrow-right"></i></button>
+  </div>`;
+},
 
   st6(){return`<div class="stcont"><div class="stttl"><i class="bi bi-cloud-arrow-up-fill" style="color:var(--pr)"></i> Upload Bukti Pembayaran</div>
     <div class="ibox" style="margin-bottom:16px"><span class="ibox-i">📸</span><div style="font-size:.83rem">Upload foto/screenshot bukti transfer atau pembayaran kamu. Pastikan nomor tujuan dan nominal jelas terlihat.</div></div>
@@ -574,32 +615,71 @@ function selVar(pid,vid){
 }
 function startCo(){
   if(!St.co.prod||!St.co.variant){toast('Pilih varian terlebih dahulu','warning');return}
-  St.co.step=2;R.go('checkout');
+  St.co.step=1;R.go('checkout');
+}
+
+function openConfirmOrder(){
+  const cd=St.co;
+  const nm=$('co-name')?.value.trim();
+  const wa=$('co-wa')?.value.trim();
+  const em=$('co-email')?.value.trim();
+  let err=false;
+
+  if(!nm){$('co-err-name')?.classList.add('show');err=true}else $('co-err-name')?.classList.remove('show');
+  if(!wa||!vWA(wa)){$('co-err-wa')?.classList.add('show');err=true}else $('co-err-wa')?.classList.remove('show');
+  if(!em||!vEmail(em)){$('co-err-email')?.classList.add('show');err=true}else $('co-err-email')?.classList.remove('show');
+  if(!cd.pm){toast('Pilih metode pembayaran dulu!','warning');return}
+  if(err){toast('Mohon lengkapi data pemesanan sebelum lanjut','warning');return}
+
+  cd.form['f-name']=nm;
+  cd.form['f-wa']=nWA(wa);
+  cd.form['f-em']=em;
+  cd.confirmOpen=true;
+
+  const modal=$('checkout-confirm-modal');
+  if(modal) modal.classList.add('show');
+}
+
+function closeConfirmOrder(){
+  St.co.confirmOpen=false;
+  const modal=$('checkout-confirm-modal');
+  if(modal) modal.classList.remove('show');
+}
+
+function confirmOrder(){
+  const cd=St.co;
+  cd.confirmOpen=false;
+  const modal=$('checkout-confirm-modal');
+  if(modal) modal.classList.remove('show');
+  cd.step=2;
+  R.go('checkout');
 }
 
 // ── CHECKOUT ─────────────────────────────────────────────────
 function coBk(){
   const cd=St.co;
-  if(cd.step<=3)R.go('home');
+  if(cd.step<=1)R.go('home');
   else{cd.step--;R.go('checkout')}
 }
 
 function coNext(){
   const cd=St.co;
-  if(cd.step===2){if(!cd.variant){toast('Pilih varian dulu ya!','warning');return}cd.step=3;R.go('checkout');return}
-  if(cd.step===3){
-    const nm=$('f-name')?.value.trim(),wa=$('f-wa')?.value.trim(),em=$('f-em')?.value.trim();
+  if(cd.step===1){
+    const nm=$('co-name')?.value.trim(),wa=$('co-wa')?.value.trim(),em=$('co-email')?.value.trim();
     let err=false;
-    if(!nm){$('err-name')?.classList.add('show');err=true}else $('err-name')?.classList.remove('show');
-    if(!wa||!vWA(wa)){$('err-wa')?.classList.add('show');err=true}else $('err-wa')?.classList.remove('show');
-    if(!em||!vEmail(em)){$('err-em')?.classList.add('show');err=true}else $('err-em')?.classList.remove('show');
+    if(!nm){$('co-err-name')?.classList.add('show');err=true}else $('co-err-name')?.classList.remove('show');
+    if(!wa||!vWA(wa)){$('co-err-wa')?.classList.add('show');err=true}else $('co-err-wa')?.classList.remove('show');
+    if(!em||!vEmail(em)){$('co-err-email')?.classList.add('show');err=true}else $('co-err-email')?.classList.remove('show');
+    if(!cd.pm){toast('Pilih metode pembayaran dulu!','warning');return}
     if(err){toast('Mohon lengkapi semua data yang diperlukan','warning');return}
     cd.form['f-name']=nm;cd.form['f-wa']=nWA(wa);cd.form['f-em']=em;
-    cd.step=4;R.go('checkout');return;
+    openConfirmOrder();
+    return;
   }
-  if(cd.step===4){if(!cd.pm){toast('Pilih metode pembayaran dulu!','warning');return}cd.step=5;R.go('checkout');return}
-  if(cd.step===5){cd.step=6;R.go('checkout');return}
-  if(cd.step===6){if(!cd.proof){toast('Upload bukti pembayaran dulu!','warning');return}cd.step=7;R.go('checkout');return}
+  if(cd.step===2){
+    cd.step=3;R.go('checkout');
+    return;
+  }
 }
 
 function coSelVar(vid){
@@ -607,6 +687,182 @@ function coSelVar(vid){
   St.co.variant=v;
   document.querySelectorAll('#vg-co .var-card').forEach(el=>el.classList.remove('sel'));
   document.querySelector(`#vg-co [onclick="coSelVar('${vid}')"]`)?.classList.add('sel');
+}
+
+function renderPaymentOptions(pmId){
+  const cd=St.co;
+  return PMETHODS.map(pm => `
+    <button type="button" class="pay-card co-pay-option ${cd.pm === pm.id ? 'sel' : ''}" onclick="selPay('${pm.id}')">
+      <span class="pay-ico">${pm.icon}</span>
+      <span class="pay-nm">${esc(pm.name)}</span>
+    </button>
+  `).join('');
+}
+
+function renderOrderSummary(){
+  const cd=St.co;
+  const p=cd.prod;
+  const v=cd.variant;
+  if(!p||!v) return '';
+  return `
+    <div class="co-order-box">
+      <div class="co-order-top">
+        <div class="co-order-thumb">
+          <img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\'co-thumb-fallback\'>${esc(p.name.charAt(0))}</span>'">
+        </div>
+        <div class="co-order-meta">
+          <div class="co-order-name">${esc(p.name)}</div>
+          <div class="co-order-duration">${esc(v.n)}</div>
+        </div>
+      </div>
+      <div class="co-detail-row">
+        <span>Detail produk</span>
+        <strong>${esc(v.n)}</strong>
+      </div>
+      <div class="co-detail-row total-row">
+        <span>Harga</span>
+        <strong>${fmt(v.p)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderFormatStep(){
+  const cd=St.co,p=cd.prod,v=cd.variant;
+  if(!p||!v) return '<div class="empty-st"><span class="ei">🛒</span><h3>Tidak ada produk dipilih</h3></div>';
+
+  return `
+    <div class="checkout-format">
+      <div class="checkout-panel checkout-panel-left">
+        <div class="co-product-head">
+          <div class="co-product-logo"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\'co-thumb-fallback\'>${esc(p.name.charAt(0))}</span>'"></div>
+          <div>
+            <div class="co-product-name">${esc(p.name)}</div>
+            <div class="co-product-duration">${esc(v.n)}</div>
+          </div>
+        </div>
+        <div class="co-summary-wrap">
+          ${renderOrderSummary()}
+        </div>
+      </div>
+
+      <div class="checkout-panel checkout-panel-right">
+        <div class="co-form-block">
+          <div class="co-input-group">
+            <label>Nama pelanggan</label>
+            <input id="co-name" class="co-input" type="text" value="${esc(Auth.cu?.name || '')}" placeholder="Masukkan nama Anda" />
+            <div class="co-error" id="co-err-name">Nama tidak boleh kosong</div>
+          </div>
+
+          <div class="co-input-group">
+            <label>Nomor WhatsApp aktif</label>
+            <input id="co-wa" class="co-input" type="tel" value="${esc(Auth.cu?.phone || '')}" placeholder="08xxxxxxxxxx" />
+            <div class="co-error" id="co-err-wa">Format nomor WA tidak valid</div>
+          </div>
+
+          <div class="co-input-group">
+            <label>Email</label>
+            <input id="co-email" class="co-input" type="email" value="${esc(Auth.cu?.email || '')}" placeholder="nama@email.com" />
+            <div class="co-error" id="co-err-email">Format email tidak valid</div>
+          </div>
+
+          <div class="co-payment-group">
+            <label>Metode pembayaran</label>
+            <div class="co-payment-grid">
+              ${renderPaymentOptions(cd.pm)}
+            </div>
+          </div>
+        </div>
+
+        <button class="co-primary-btn" onclick="openConfirmOrder()">Pay</button>
+      </div>
+    </div>
+
+    <div class="co-confirm-overlay" id="checkout-confirm-modal" aria-hidden="true">
+      <div class="co-confirm-modal">
+        <button class="co-close-btn" type="button" onclick="closeConfirmOrder()" aria-label="Tutup">×</button>
+        <div class="co-modal-header">
+          <div class="co-modal-logo"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\'co-thumb-fallback\'>${esc(p.name.charAt(0))}</span>'"></div>
+          <div class="co-modal-title">Detail Pesanan</div>
+        </div>
+
+        <div class="co-modal-body">
+          <div class="co-modal-row"><span>Nama</span><strong>${esc(cd.form['f-name'] || Auth.cu?.name || '-')}</strong></div>
+          <div class="co-modal-row"><span>WhatsApp</span><strong>${esc(cd.form['f-wa'] || Auth.cu?.phone || '-')}</strong></div>
+          <div class="co-modal-row"><span>Email</span><strong>${esc(cd.form['f-em'] || Auth.cu?.email || '-')}</strong></div>
+          <div class="co-modal-row"><span>Aplikasi</span><strong>${esc(p.name)}</strong></div>
+          <div class="co-modal-row"><span>Durasi</span><strong>${esc(v.n)}</strong></div>
+          <div class="co-modal-row"><span>Metode</span><strong>${esc(PMETHODS.find(m=>m.id===cd.pm)?.name || cd.pm || '-')}</strong></div>
+          <div class="co-modal-row total"><span>Total</span><strong>${fmt(v.p)}</strong></div>
+        </div>
+
+        <button class="co-primary-btn full" type="button" onclick="confirmOrder()">Lanjutkan</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderPaymentStep(){
+  const cd=St.co;
+  const pm=PMETHODS.find(m=>m.id===cd.pm) || PMETHODS[0];
+  const proofName = cd.proof && typeof cd.proof === 'object' && cd.proof.name ? cd.proof.name : (cd.proof ? 'Bukti terpilih' : 'Belum ada file dipilih');
+
+  return `
+    <div class="checkout-payment-wrap">
+      <div class="checkout-panel checkout-panel-left">
+        <div class="co-qr-box">
+          <img src="${esc(pm.qrImage)}" alt="QR ${esc(pm.name)}" />
+        </div>
+        <button class="co-download-btn" type="button" onclick="downloadCurrentQr()">Unduh QR</button>
+      </div>
+      <div class="checkout-panel checkout-panel-right">
+        <div class="co-payment-total">
+          <span>Total Pembayaran</span>
+          <strong>${fmt(cd.variant?.p || 0)}</strong>
+        </div>
+        <p class="co-payment-text">Scan QR di samping dan bayar sesuai nominal yang tertera.</p>
+
+        <div class="co-proof-box">
+          <label class="co-proof-label">Upload Bukti Transfer</label>
+          <div class="co-proof-drop" onclick="triggerProofUpload()">
+            <span class="co-proof-icon">📸</span>
+            <div class="co-proof-text">Pilih gambar bukti transfer</div>
+            <div class="co-proof-sub">PNG, JPG, JPEG • Maksimal 10MB</div>
+          </div>
+          <div class="co-proof-filename" id="co-proof-name">${proofName}</div>
+          <input type="file" id="proof-inp" accept="image/*" style="display:none" onchange="handleProofFile(event)">
+          <button class="co-primary-btn light" type="button" onclick="submitProofAndContinue()">Lanjutkan</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFinishStep(){
+  const cd = St.co;
+  const p = cd.prod;
+  const v = cd.variant;
+  const customerName = (cd.form['f-name'] || Auth.cu?.name || '').trim() || 'Customer';
+  const adminNumber = CFG.adminWA || '6285111232205';
+  const waMessage = buildWA(p, v, cd);
+  const waLink = `https://wa.me/${adminNumber}?text=${encodeURIComponent(waMessage)}`;
+
+  return `
+    <div class="checkout-finish">
+      <div class="co-finish-card">
+        <div class="co-finish-icon">✓</div>
+        <h3>Selamat, pesananmu berhasil dibuat!</h3>
+        <p>Pesanan sudah dicatat dan Anda dapat menghubungi admin melalui WhatsApp untuk proses selanjutnya.</p>
+        <div class="co-finish-summary">
+          <div><span>Nama</span><strong>${esc(customerName)}</strong></div>
+          <div><span>Aplikasi</span><strong>${esc(p?.name || '-')}</strong></div>
+          <div><span>Detail</span><strong>${esc(v?.n || '-')}</strong></div>
+          <div><span>Total</span><strong>${fmt(v?.p || 0)}</strong></div>
+        </div>
+        <button class="co-primary-btn full" type="button" onclick="window.open('${waLink}','_blank')">Hubungi Admin via WhatsApp</button>
+      </div>
+    </div>
+  `;
 }
 
 function selPay(id){
@@ -635,6 +891,42 @@ function procFile(file){
     toast('Bukti pembayaran berhasil diupload!','success');
   };
   r.readAsDataURL(file);
+}
+
+function triggerProofUpload(){
+  $('proof-inp')?.click();
+}
+
+function handleProofFile(ev){
+  const file = ev.target.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){toast('File harus berupa gambar','error');return}
+  if(file.size > 10 * 1024 * 1024){toast('Ukuran file maksimal 10MB','error');return}
+
+  St.co.proof = file;
+  const nameEl = $('co-proof-name');
+  if(nameEl) nameEl.textContent = file.name;
+  toast('Bukti transfer berhasil dipilih','success');
+}
+
+function submitProofAndContinue(){
+  if(!St.co.proof){
+    toast('Upload bukti transfer dulu sebelum lanjut','warning');
+    return;
+  }
+  St.co.step = 3;
+  R.go('checkout');
+}
+
+function downloadCurrentQr(){
+  const pm = PMETHODS.find(m => m.id === St.co.pm) || PMETHODS[0];
+  const link = document.createElement('a');
+  link.href = pm.qrImage;
+  link.download = `qr-${pm.name.toLowerCase()}.png`;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 function afterWA(){toast('Pesananmu sedang diproses admin! 🎉','success')}

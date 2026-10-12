@@ -90,7 +90,7 @@ describe('Auth Module', () => {
       
       const admin = users.find(u => u.role === 'admin');
       expect(admin).toBeDefined();
-      expect(admin.email).toBe('adminselosS@jimail.com');
+      expect(admin.email).toBe('adminseloss@jimail.com');
 
       for (let i = 1; i <= 5; i++) {
         const u = users.find(item => item.email === `user${i}seloss@jimail.com`);
@@ -99,10 +99,10 @@ describe('Auth Module', () => {
       }
     });
 
-    it('should login admin with adminselosS@jimail.com and Hanyaadmin123', () => {
+    it('should login admin with adminseloss@jimail.com and Hanyaadmin123', () => {
       const admin = Auth.login('adminselosS@jimail.com', 'Hanyaadmin123');
       expect(admin.role).toBe('admin');
-      expect(Auth.cu.email).toBe('adminselosS@jimail.com');
+      expect(Auth.cu.email).toBe('adminseloss@jimail.com');
     });
 
     it('should login all 5 user accounts with Masuk123', () => {

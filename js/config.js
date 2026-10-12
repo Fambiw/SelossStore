@@ -1,6 +1,6 @@
 export const CFG = {
   adminWA: '6285111232205', //GANTI nomor WA admin di sini
-  adminEmail: 'adminselosS@jimail.com',
+  adminEmail: 'adminseloss@jimail.com',
   siteName: 'Seloss Store',
 };
 
@@ -35,4 +35,4 @@ export const PMETHODS = [
   },
 ];
 
-export const STLBLS = ['Produk', 'Varian', 'Data', 'Metode', 'Bayar', 'Upload', 'Selesai'];
+export const STLBLS = ['Format', 'Payment', 'Selesai'];
