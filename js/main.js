@@ -104,6 +104,8 @@ function selectPriceAndGo(pid,vid){
   St.resetCo();
   St.co.prod=p;
   St.co.variant=v;
+  St.co.step=1;
+  St.co.step=2;
   St.co.step=3;
   // Close modal then navigate
   const modal=$('pl-modal'),sheet=$('pl-sheet');
