@@ -105,8 +105,6 @@ function selectPriceAndGo(pid,vid){
   St.co.prod=p;
   St.co.variant=v;
   St.co.step=1;
-  St.co.step=2;
-  St.co.step=3;
   // Close modal then navigate
   const modal=$('pl-modal'),sheet=$('pl-sheet');
   sheet?.classList.remove('slide-up');
@@ -299,7 +297,7 @@ const Pages={
   detail(prms){
     const p=DB.prods().find(pr=>pr.id===prms.productId);
     if(!p)return`<div class="empty-st"><span class="ei">❌</span><h3>Produk tidak ditemukan</h3><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
-    St.co.prod=p;St.co.variant=p.vars[0];St.co.step=2;
+    St.co.prod=p;St.co.variant=p.vars[0];St.co.step=1;
     return`<div class="ph"><button class="back-btn" onclick="R.go('home')"><i class="bi bi-arrow-left"></i></button><div class="ph-ttl">Detail Produk</div></div>
     <div class="dt-hdr"><div class="dt-ico">📦</div><div class="dt-info"><div class="dt-nm">${esc(p.name)}</div>
     <div class="dt-rt"><span class="star">★</span>${p.rating} &nbsp;•&nbsp; <i class="bi bi-bag-check-fill"></i> ${p.sold?.toLocaleString('id-ID')} terjual${p.flash?` &nbsp;•&nbsp; <span style="color:#FFD700">⚡ Flash Sale!</span>`:''}</div>
@@ -752,19 +750,19 @@ function renderFormatStep(){
         <div class="co-form-block">
           <div class="co-input-group">
             <label>Nama pelanggan</label>
-            <input id="co-name" class="co-input" type="text" value="${esc(Auth.cu?.name || '')}" placeholder="Masukkan nama Anda" />
+            <input id="co-name" class="co-input" type="text" value="${esc(cd.form['f-name'] || Auth.cu?.name || '')}" placeholder="Masukkan nama Anda" />
             <div class="co-error" id="co-err-name">Nama tidak boleh kosong</div>
           </div>
 
           <div class="co-input-group">
             <label>Nomor WhatsApp aktif</label>
-            <input id="co-wa" class="co-input" type="tel" value="${esc(Auth.cu?.phone || '')}" placeholder="08xxxxxxxxxx" />
+            <input id="co-wa" class="co-input" type="tel" value="${esc(cd.form['f-wa'] || Auth.cu?.phone || '')}" placeholder="08xxxxxxxxxx" />
             <div class="co-error" id="co-err-wa">Format nomor WA tidak valid</div>
           </div>
 
           <div class="co-input-group">
             <label>Email</label>
-            <input id="co-email" class="co-input" type="email" value="${esc(Auth.cu?.email || '')}" placeholder="nama@email.com" />
+            <input id="co-email" class="co-input" type="email" value="${esc(cd.form['f-em'] || Auth.cu?.email || '')}" placeholder="nama@email.com" />
             <div class="co-error" id="co-err-email">Format email tidak valid</div>
           </div>
 
@@ -1187,6 +1185,13 @@ function initApp() {
   window.coSelVar          = coSelVar;
   window.coNext            = coNext;
   window.selPay            = selPay;
+  window.openConfirmOrder       = openConfirmOrder;
+  window.closeConfirmOrder      = closeConfirmOrder;
+  window.confirmOrder           = confirmOrder;
+  window.triggerProofUpload     = triggerProofUpload;
+  window.handleProofFile        = handleProofFile;
+  window.submitProofAndContinue = submitProofAndContinue;
+  window.downloadCurrentQr      = downloadCurrentQr;
   window.demoLogin         = demoLogin;
   window.doLogin           = doLogin;
   window.doReg             = doReg;
