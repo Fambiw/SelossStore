@@ -18,7 +18,7 @@ window.disc = disc;
 
 // ── TOAST ────────────────────────────────────────────────────
 export function toast(msg, type = 'success', dur = 3500) {
-  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const icons = { success: 'bi-check-circle', error: 'bi-x-circle', info: 'bi-info-circle', warning: 'bi-exclamation-triangle' };
   const cols = { success: '#10b981', error: '#ef4444', info: '#3b82f6', warning: '#f59e0b' };
   const c = $('tc');
   if (!c) return;
@@ -27,7 +27,7 @@ export function toast(msg, type = 'success', dur = 3500) {
   el.id = id;
   el.className = 'ti';
   el.style.borderLeft = `4px solid ${cols[type]}`;
-  el.innerHTML = `<span>${icons[type]}</span><span style="flex:1">${esc(msg)}</span><button class="tc-x" onclick="rmT('${id}')">×</button>`;
+  el.innerHTML = `<i class="bi ${icons[type]}" aria-hidden="true"></i><span style="flex:1">${esc(msg)}</span><button class="tc-x" onclick="rmT('${id}')" aria-label="Tutup">×</button>`;
   c.appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => rmT(id), dur);
@@ -47,19 +47,23 @@ window.rmT = rmT;
 // ── UPDATE NAV UI ────────────────────────────────────────────
 function updNav(){
   const u=Auth.cu;if(!u)return;
-  const av=$('nav-av');if(av)av.textContent=u.avatar||u.name[0];
+  const avatar=u.avatar||u.name?.[0]||'';
+  const av=$('sb-avatar'),name=$('sb-user-name'),role=$('sb-user-role');
+  if(av)av.textContent=avatar;
+  if(name)name.textContent=u.name;
+  if(role)role.textContent=Auth.isAdm()?'Administrator':'Member';
   const isAdm=Auth.isAdm();
-  ['sbi-adm','sb-admin-lbl'].forEach(id=>{const el=$(id);if(el)el.style.display=isAdm?'':'none'});
-  const badm=$('bni-adm');if(badm)badm.style.display=isAdm?'':'none';
+  const adminGroup=$('sb-admin-group');if(adminGroup)adminGroup.style.display=isAdm?'':'none';
   const pg=R.cur;
-  const map={home:['sbi-home','bni-home'],history:['sbi-hist','bni-hist'],profile:['sbi-prof','bni-prof'],admin:['sbi-adm','bni-adm']};
-  document.querySelectorAll('.sb-item,.bn-it').forEach(el=>{el.classList.remove('act')});
+  const map={home:['sbi-home'],history:['sbi-hist'],profile:['sb-profile'],admin:['sbi-adm']};
+  document.querySelectorAll('.sb-item,.sb-profile,.category-item').forEach(el=>el.classList.remove('act'));
   if(map[pg])map[pg].forEach(id=>{const el=$(id);if(el)el.classList.add('act')});
+  document.querySelector(`.category-item[data-category="${St.cat}"]`)?.classList.add('act');
 }
 
 // ── SIDEBAR ──────────────────────────────────────────────────
-function tglSB(){$('sb').classList.toggle('open');$('sb-ov').classList.toggle('show')}
-function closeSB(){$('sb').classList.remove('open');$('sb-ov').classList.remove('show')}
+function tglSB(){$('sb')?.classList.toggle('open');$('sb-ov')?.classList.toggle('show')}
+function closeSB(){$('sb')?.classList.remove('open');$('sb-ov')?.classList.remove('show')}
 function gocat(c){St.cat=c;R.go('home');closeSB()}
 function openPriceModal(id){
   const p=DB.prods().find(pr=>pr.id===id);
@@ -116,16 +120,16 @@ function selectPriceAndGo(pid,vid){
 
 // ── SEARCH ───────────────────────────────────────────────────
 let mobSrchOpen=false;
-function tglMobSearch(){mobSrchOpen=!mobSrchOpen;$('mob-sb').classList.toggle('show',mobSrchOpen)}
+function tglMobSearch(){mobSrchOpen=!mobSrchOpen;$('mob-sb')?.classList.toggle('show',mobSrchOpen)}
 function handleSearch(v){St.q=v}
 function doSearch(){R.go('home');closeSB()}
 function clearSrch(){St.q='';const si=$('srch-inp'),mi=$('mob-srch-inp');if(si)si.value='';if(mi)mi.value='';R.go('home')}
 
 // ── STATUS BADGE ─────────────────────────────────────────────
 function sbdg(status){
-  const m={pending:['s-pend','⏳ Menunggu'],confirmed:['s-conf','✅ Dikonfirmasi'],processing:['s-proc','🔄 Diproses'],done:['s-done','🎉 Selesai'],cancelled:['s-canc','✕ Dibatalkan']};
-  const[cls,lbl]=m[status]||['s-pend',status];
-  return`<span class="stbdg ${cls}">${lbl}</span>`;
+  const m={pending:['s-pend','bi-hourglass-split','Menunggu'],confirmed:['s-conf','bi-check-circle','Dikonfirmasi'],processing:['s-proc','bi-arrow-repeat','Diproses'],done:['s-done','bi-check-circle-fill','Selesai'],cancelled:['s-canc','bi-x-circle','Dibatalkan']};
+  const[cls,icon,label]=m[status]||['s-pend','bi-info-circle',status];
+  return`<span class="stbdg ${cls}"><i class="bi ${icon}" aria-hidden="true"></i> ${label}</span>`;
 }
 
 // ── WA MESSAGE ───────────────────────────────────────────────
@@ -161,7 +165,7 @@ function priceSumHTML(v){
 
 // ── BADGE MAP ────────────────────────────────────────────────
 function getBadge(b){
-  const m={flash:{cls:'b-flash',lbl:'⚡ Flash'},promo:{cls:'b-promo',lbl:'🏷️ Promo'},lmt:{cls:'b-lmt',lbl:'🔴 Terbatas'},bestseller:{cls:'b-bs',lbl:'🔥 Best Seller'}};
+  const m={flash:{cls:'b-flash',lbl:'Flash'},promo:{cls:'b-promo',lbl:'Promo'},lmt:{cls:'b-lmt',lbl:'Terbatas'},bestseller:{cls:'b-bs',lbl:'Best Seller'}};
   return m[b]||null;
 }
 
@@ -182,7 +186,7 @@ const Pages={
   },
 
   loginH(){return`<div class="ac fade-in">
-    <div class="alo"><span class="alo-t">⚡ Seloss Store</span><span class="alo-s">Cepat &bull; Simple &bull; Tanpa Ribet</span></div>
+    <div class="alo"><span class="alo-t">Seloss Store</span><span class="alo-s">Cepat &bull; Simple &bull; Tanpa Ribet</span></div>
     <div class="a-ttl">Masuk ke Akun</div>
     <div class="a-sub">Belum punya akun? <a href="#" class="a-lnk" onclick="R.go('register');return false">Daftar Sekarang</a></div>
     <div class="a-err" id="le"></div>
@@ -191,17 +195,17 @@ const Pages={
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><label class="a-rem"><input type="checkbox" id="le-rem"> Ingat saya</label><a href="#" class="a-lnk" onclick="R.go('forgot');return false" style="font-size:.8rem">Lupa password?</a></div>
     <button class="a-btn pulse" onclick="doLogin()"><i class="bi bi-box-arrow-in-right"></i> Masuk Sekarang</button>
     <div class="a-divider">atau coba demo</div>
-    <button class="a-btn ghost" onclick="demoLogin('user')">👤 Login Cepat sebagai User 1</button>
-    <button class="a-btn ghost" onclick="demoLogin('admin')" style="margin-top:8px">🛡️ Login Cepat sebagai Admin</button>
+    <button class="a-btn ghost" onclick="demoLogin('user')"><i class="bi bi-person" aria-hidden="true"></i> Login Cepat sebagai User 1</button>
+    <button class="a-btn ghost" onclick="demoLogin('admin')" style="margin-top:8px"><i class="bi bi-shield-lock" aria-hidden="true"></i> Login Cepat sebagai Admin</button>
     <div style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--gy4);border-radius:10px;font-size:0.75rem;color:var(--t2);line-height:1.6;text-align:left">
-      <div style="font-weight:600;color:var(--t1);margin-bottom:4px">🔑 Akun Tersedia:</div>
+      <div style="font-weight:600;color:var(--t1);margin-bottom:4px"><i class="bi bi-key" aria-hidden="true"></i> Akun Tersedia:</div>
       <div>• <strong>Admin:</strong> <code>adminseloss@jimail.com</code> (Password: <code>Hanyaadmin123</code>)</div>
       <div>• <strong>User:</strong> <code>user1seloss@jimail.com</code> s/d <code>user5seloss@jimail.com</code> (Password: <code>Masuk123</code>)</div>
     </div>
   </div>`},
 
   regH(){return`<div class="ac fade-in">
-    <div class="alo"><span class="alo-t">⚡ Seloss Store</span><span class="alo-s">Cepat &bull; Simple &bull; Tanpa Ribet</span></div>
+    <div class="alo"><span class="alo-t">Seloss Store</span><span class="alo-s">Cepat &bull; Simple &bull; Tanpa Ribet</span></div>
     <div class="a-ttl">Buat Akun Baru</div>
     <div class="a-sub">Sudah punya akun? <a href="#" class="a-lnk" onclick="R.go('login');return false">Masuk di sini</a></div>
     <div class="a-err" id="re"></div>
@@ -214,7 +218,7 @@ const Pages={
   </div>`},
 
   forgH(){return`<div class="ac fade-in">
-    <div class="alo"><span class="alo-t">⚡ Seloss Store</span></div>
+    <div class="alo"><span class="alo-t">Seloss Store</span></div>
     <div class="a-ttl">Reset Password</div>
     <div class="a-sub">Masukkan email terdaftar untuk verifikasi akun kamu.</div>
     <div class="a-err" id="fe"></div>
@@ -255,11 +259,11 @@ const Pages={
     if(q)filtered=filtered.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
     return`
     <div class="bsl"><div class="bsl-trk" id="bsl-trk"></div><div class="bsl-dots" id="bsl-dots"></div><button class="bsl-nav bsl-prev" onclick="goSl((BslIdx-1+${banners.length})%${banners.length})"><i class="bi bi-chevron-left"></i></button><button class="bsl-nav bsl-next" onclick="goSl((BslIdx+1)%${banners.length})"><i class="bi bi-chevron-right"></i></button></div>
-    <div class="sh"><div class="sh-ttl"><span>📦</span>Kategori</div></div>
+    <div class="sh"><div class="sh-ttl"><i class="bi bi-grid" aria-hidden="true"></i>Kategori</div></div>
     <div class="cats">${cats.map(c=>`<button class="cat-tab${St.cat===c.id?' act':''}" onclick="filterCat('${c.id}')">${c.lbl}</button>`).join('')}</div>
-    ${q?`<div style="margin-bottom:12px;font-size:.875rem;color:var(--gy)">Hasil pencarian "<strong>${esc(q)}</strong>" — ${filtered.length} produk <a href="#" style="color:var(--ac);font-size:.8rem;margin-left:6px" onclick="clearSrch();return false">✕ Hapus</a></div>`:''}
-    <div class="sh"><div class="sh-ttl"><span>🛍️</span>${cats.find(c=>c.id===cat)?.lbl||'Semuaan'}</div><span style="font-size:.78rem;color:var(--gy)">${filtered.length} layanan</span></div>
-    ${filtered.length===0?`<div class="empty-st"><span class="ei">🔍</span><h3>Produk tidak ditemukan</h3><p>Coba kata kunci lain atau kategori berbeda</p></div>`:`<div class="pgrid" id="pgrid">${skelCards(filtered.length)}</div>`}
+    ${q?`<div style="margin-bottom:12px;font-size:.875rem;color:var(--gy)">Hasil pencarian "<strong>${esc(q)}</strong>" — ${filtered.length} produk <a href="#" style="color:var(--ac);font-size:.8rem;margin-left:6px" onclick="clearSrch();return false"><i class="bi bi-x-lg" aria-hidden="true"></i> Hapus</a></div>`:''}
+    <div class="sh"><div class="sh-ttl"><i class="bi bi-bag" aria-hidden="true"></i>${cats.find(c=>c.id===cat)?.lbl||'Semuaan'}</div><span style="font-size:.78rem;color:var(--gy)">${filtered.length} layanan</span></div>
+    ${filtered.length===0?`<div class="empty-st"><span class="ei"><i class="bi bi-search" aria-hidden="true"></i></span><h3>Produk tidak ditemukan</h3><p>Coba kata kunci lain atau kategori berbeda</p></div>`:`<div class="pgrid" id="pgrid">${skelCards(filtered.length)}</div>`}
     <div class="pl-modal" id="pl-modal" onclick="closePriceModal(event)"><div class="pl-sheet" id="pl-sheet"></div></div>`;
   },
 
@@ -296,15 +300,15 @@ const Pages={
   // DETAIL
   detail(prms){
     const p=DB.prods().find(pr=>pr.id===prms.productId);
-    if(!p)return`<div class="empty-st"><span class="ei">❌</span><h3>Produk tidak ditemukan</h3><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
+    if(!p)return`<div class="empty-st"><span class="ei"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></span><h3>Produk tidak ditemukan</h3><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
     St.co.prod=p;St.co.variant=p.vars[0];St.co.step=1;
     return`<div class="ph"><button class="back-btn" onclick="R.go('home')"><i class="bi bi-arrow-left"></i></button><div class="ph-ttl">Detail Produk</div></div>
-    <div class="dt-hdr"><div class="dt-ico">📦</div><div class="dt-info"><div class="dt-nm">${esc(p.name)}</div>
-    <div class="dt-rt"><span class="star">★</span>${p.rating} &nbsp;•&nbsp; <i class="bi bi-bag-check-fill"></i> ${p.sold?.toLocaleString('id-ID')} terjual${p.flash?` &nbsp;•&nbsp; <span style="color:#FFD700">⚡ Flash Sale!</span>`:''}</div>
+    <div class="dt-hdr"><div class="dt-ico"><i class="bi bi-box-seam" aria-hidden="true"></i></div><div class="dt-info"><div class="dt-nm">${esc(p.name)}</div>
+    <div class="dt-rt"><i class="bi bi-star-fill star" aria-hidden="true"></i> ${p.rating} &nbsp;•&nbsp; <i class="bi bi-bag-check-fill"></i> ${p.sold?.toLocaleString('id-ID')} terjual${p.flash?` &nbsp;•&nbsp; <span><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Flash Sale!</span>`:''}</div>
     <div class="dt-desc">${esc(p.desc)}</div></div></div>
     ${p.flash?`<div style="background:linear-gradient(135deg,#10052a,#0a1628);border-radius:var(--r3);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><span style="font-size:1.4rem">⏳</span><div><div style="font-size:.7rem;color:rgba(255,255,255,.45);margin-bottom:4px">FLASH SALE BERAKHIR DALAM</div><div id="dt-cd" class="cdbox" style="display:inline-flex"></div></div></div>`:''}
     <div class="scont" style="margin-bottom:14px"><div class="stttl"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--pr)"></i> Pilih Paket</div>
-    <div class="vars-grid" id="vg">${p.vars.map((v,i)=>`<div class="var-card${i===0?' sel':''}" id="vc-${v.id}" onclick="selVar('${p.id}','${v.id}')"><div class="var-nm">${esc(v.n)}</div><div class="var-pr">${fmt(v.p)}</div>${v.o>v.p?`<div class="var-og">${fmt(v.o)}</div><div class="var-disc">-${disc(v.o,v.p)}%</div>`:''} ${v.stk<=10?`<div class="var-low">⚠️ Sisa ${v.stk} slot!</div>`:''}</div>`).join('')}</div></div>
+    <div class="vars-grid" id="vg">${p.vars.map((v,i)=>`<div class="var-card${i===0?' sel':''}" id="vc-${v.id}" onclick="selVar('${p.id}','${v.id}')"><div class="var-nm">${esc(v.n)}</div><div class="var-pr">${fmt(v.p)}</div>${v.o>v.p?`<div class="var-og">${fmt(v.o)}</div><div class="var-disc">-${disc(v.o,v.p)}%</div>`:''} ${v.stk<=10?`<div class="var-low"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Sisa ${v.stk} slot!</div>`:''}</div>`).join('')}</div></div>
     <div class="scont" style="margin-bottom:14px" id="ps">${priceSumHTML(p.vars[0])}</div>
     <button class="btn-pr" style="width:100%;font-size:.95rem;padding:15px" onclick="startCo()"><i class="bi bi-cart-fill"></i> Lanjut Beli Sekarang</button>`;
   },
@@ -317,7 +321,7 @@ const Pages={
   // CHECKOUT
   checkout(){
     const cd=St.co,p=cd.prod,v=cd.variant,step=cd.step;
-    if(!p)return`<div class="empty-st"><span class="ei">🛒</span><h3>Tidak ada produk dipilih</h3><p>Silakan pilih produk terlebih dahulu</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
+    if(!p)return`<div class="empty-st"><span class="ei"><i class="bi bi-cart" aria-hidden="true"></i></span><h3>Tidak ada produk dipilih</h3><p>Silakan pilih produk terlebih dahulu</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
 
     return `
       <div class="checkout-shell">
@@ -352,14 +356,14 @@ const Pages={
   },
 
   st2(p,v){return`<div class="stcont"><div class="stttl"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--pr)"></i> Pilih Varian Produk</div>
-    <div class="ibox" style="margin-bottom:16px"><span class="ibox-i">📦</span><div><strong>${esc(p.name)}</strong><br><span style="font-size:.8rem">Pilih paket yang kamu mau 👇</span></div></div>
+    <div class="ibox" style="margin-bottom:16px"><span class="ibox-i"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><strong>${esc(p.name)}</strong><br><span style="font-size:.8rem">Pilih paket yang kamu mau</span></div></div>
     <div class="vars-grid" id="vg-co">${p.vars.map(vv=>`<div class="var-card${vv.id===v.id?' sel':''}" onclick="coSelVar('${vv.id}')"><div class="var-nm">${esc(vv.n)}</div><div class="var-pr">${fmt(vv.p)}</div></div>`).join('')}</div>
     <button class="btn-pr" style="width:100%;margin-top:8px" onclick="coNext()">Lanjutkan <i class="bi bi-arrow-right"></i></button></div>`},
 
   st3(p,v){
     const u=Auth.cu;
     return`<div class="stcont"><div class="stttl"><i class="bi bi-person-fill" style="color:var(--pr)"></i> Isi Data Pembeli</div>
-    <div class="ibox" style="margin-bottom:18px"><span class="ibox-i">📦</span><div><strong>${esc(p.name)}</strong> — ${esc(v.n)}<br><span style="font-size:.8rem;font-weight:700;color:var(--pr)">${fmt(v.p)}</span></div></div>
+    <div class="ibox" style="margin-bottom:18px"><span class="ibox-i"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><strong>${esc(p.name)}</strong> — ${esc(v.n)}<br><span style="font-size:.8rem;font-weight:700;color:var(--pr)">${fmt(v.p)}</span></div></div>
     <div class="fg"><label class="flbl">Nama Lengkap <span class="req">*</span></label><input class="finp" id="f-name" type="text" placeholder="Nama kamu" value="${esc(u?.name||'')}"><div class="ferr" id="err-name">Nama tidak boleh kosong</div></div>
     <div class="fg"><label class="flbl">No. WhatsApp Aktif <span class="req">*</span></label><input class="finp" id="f-wa" type="tel" placeholder="08xxxxxxxxxx" value="${esc(u?.phone||'')}"><div class="fhint">Format: 08xxx atau 628xxx</div><div class="ferr" id="err-wa">Format nomor WA tidak valid</div></div>
     <div class="fg"><label class="flbl">Email Aktif <span class="req">*</span></label><input class="finp" id="f-em" type="email" placeholder="email@kamu.com" value="${esc(u?.email||'')}"><div class="ferr" id="err-em">Format email tidak valid</div></div>
@@ -385,7 +389,7 @@ const Pages={
       ${PMETHODS.filter(pm => pm.id !== 'qris').map(card).join('')}
     </div>
     <div id="pay-info" class="ibox" style="display:none;margin-bottom:14px">
-      <span class="ibox-i">💡</span><div id="pay-info-t"></div>
+      <span class="ibox-i"><i class="bi bi-lightbulb" aria-hidden="true"></i></span><div id="pay-info-t"></div>
     </div>
     <button class="btn-pr" style="width:100%;margin-top:8px"
       id="btn-np" onclick="coNext()" ${cd.pm ? '' : 'disabled'}>
@@ -411,15 +415,15 @@ const Pages={
       <div style="color:#fff;font-size:1.8rem;font-weight:900">${fmt(v.p)}</div>
       <div style="color:rgba(255,255,255,.6);font-size:.78rem;margin-top:3px">Transfer tepat sesuai nominal di atas</div>
     </div>
-    <div class="ibox" style="margin-bottom:14px"><span class="ibox-i">⚠️</span><div style="font-size:.82rem">Pastikan transfer tepat sesuai nominal. Setelah membayar, klik tombol di bawah.</div></div>
+    <div class="ibox" style="margin-bottom:14px"><span class="ibox-i"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><div style="font-size:.82rem">Pastikan transfer tepat sesuai nominal. Setelah membayar, klik tombol di bawah.</div></div>
     <button class="btn-pr" style="width:100%" onclick="coNext()">Sudah Transfer — Upload Bukti <i class="bi bi-arrow-right"></i></button>
   </div>`;
 },
 
   st6(){return`<div class="stcont"><div class="stttl"><i class="bi bi-cloud-arrow-up-fill" style="color:var(--pr)"></i> Upload Bukti Pembayaran</div>
-    <div class="ibox" style="margin-bottom:16px"><span class="ibox-i">📸</span><div style="font-size:.83rem">Upload foto/screenshot bukti transfer atau pembayaran kamu. Pastikan nomor tujuan dan nominal jelas terlihat.</div></div>
+    <div class="ibox" style="margin-bottom:16px"><span class="ibox-i"><i class="bi bi-image" aria-hidden="true"></i></span><div style="font-size:.83rem">Upload foto/screenshot bukti transfer atau pembayaran kamu. Pastikan nomor tujuan dan nominal jelas terlihat.</div></div>
     <div class="upl" id="upl-area" onclick="trigUpload()">
-      <span class="upl-ico" id="upl-ico">📤</span>
+      <span class="upl-ico" id="upl-ico"><i class="bi bi-cloud-upload" aria-hidden="true"></i></span>
       <div class="upl-t" id="upl-t">Klik untuk pilih file atau drag & drop</div>
       <div class="upl-h" id="upl-h">PNG, JPG, JPEG, GIF • Maksimal 10MB</div>
       <img id="upl-prev" class="upl-prev" alt="Preview bukti">
@@ -436,11 +440,11 @@ const Pages={
       DB.upsertTx(tx);St.co.txId=tx.id;
     }
     const pm=PMETHODS.find(m=>m.id===cd.pm);
-    return`<div class="succ-card"><div class="succ-ico">✅</div>
-    <div class="succ-ttl">Hampir Selesai! 🎉</div>
+    return`<div class="succ-card"><div class="succ-ico"><i class="bi bi-check-lg" aria-hidden="true"></i></div>
+    <div class="succ-ttl">Hampir Selesai!</div>
     <div class="succ-sub">Bukti pembayaranmu berhasil diterima!<br>Hubungi admin via WhatsApp agar pesanan segera diproses ya.</div>
     <div style="background:var(--gy5);border-radius:var(--r2);padding:16px;text-align:left;margin-bottom:20px;font-size:.82rem">
-      <div style="font-weight:700;margin-bottom:10px;color:var(--dk)">📋 Ringkasan Pesanan</div>
+      <div style="font-weight:700;margin-bottom:10px;color:var(--dk)"><i class="bi bi-receipt" aria-hidden="true"></i> Ringkasan Pesanan</div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px">
         <span style="color:var(--gy)">Produk</span><span style="font-weight:600">${esc(p.name)}</span>
         <span style="color:var(--gy)">Paket</span><span style="font-weight:600">${esc(v.n)}</span>
@@ -471,7 +475,7 @@ const Pages={
       if(cd.proof){
         const prev=$('upl-prev'),icon=$('upl-ico'),txt=$('upl-t'),hint=$('upl-h'),nbtn=$('btn-nu'),a=$('upl-area');
         if(a)a.classList.add('ok');if(prev){prev.src=cd.proof;prev.style.display='block'}
-        if(icon)icon.textContent='✅';if(txt)txt.textContent='Bukti sudah terupload!';
+        if(icon)icon.innerHTML='<i class="bi bi-check-lg" aria-hidden="true"></i>';if(txt)txt.textContent='Bukti sudah terupload!';
         if(hint)hint.textContent='Klik Kirim & Lanjutkan untuk melanjutkan';if(nbtn)nbtn.disabled=false;
       }
     }
@@ -481,13 +485,13 @@ const Pages={
   hist(){
     const allTxs=DB.txs();
     const myTxs=Auth.isAdm()?allTxs:allTxs.filter(t=>t.userId===Auth.cu.id);
-    return`<div class="ph"><div class="ph-ttl">${Auth.isAdm()?'📋 Semua Transaksi':'📋 Riwayat Transaksi'}</div></div>
-    ${myTxs.length===0?`<div class="empty-st"><span class="ei">🛍️</span><h3>Belum ada transaksi</h3><p>Yuk beli produk pertamamu!</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Belanja Sekarang</button></div>`:`
+    return`<div class="ph"><div class="ph-ttl"><i class="bi bi-receipt" aria-hidden="true"></i> ${Auth.isAdm()?'Semua Transaksi':'Riwayat Transaksi'}</div></div>
+    ${myTxs.length===0?`<div class="empty-st"><span class="ei"><i class="bi bi-bag" aria-hidden="true"></i></span><h3>Belum ada transaksi</h3><p>Yuk beli produk pertamamu!</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Belanja Sekarang</button></div>`:`
     <div>${myTxs.map(tx=>`<div class="txcard" onclick="showTxD('${tx.id}')">
-      <div class="tx-ico">${tx.productIcon?`<img src="${tx.productIcon}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:'📦'}</div>
+      <div class="tx-ico">${tx.productIcon?`<img src="${tx.productIcon}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'}</div>
       <div class="tx-inf"><div class="tx-nm">${esc(tx.productName)}</div>
       <div class="tx-sub">${esc(tx.variantName)} • ${fdt(tx.createdAt)}</div>
-      ${Auth.isAdm()?`<div class="tx-sub" style="color:var(--pr);font-weight:500">👤 ${esc(tx.userName)}</div>`:''}
+      ${Auth.isAdm()?`<div class="tx-sub" style="color:var(--pr);font-weight:500"><i class="bi bi-person" aria-hidden="true"></i> ${esc(tx.userName)}</div>`:''}
       </div><div class="tx-rt"><div class="tx-amt">${fmt(tx.amount)}</div><div style="margin-top:4px">${sbdg(tx.status)}</div></div></div>`).join('')}</div>`}
     <div class="tx-modal" id="tx-modal"><div class="tx-mc" id="tx-mc"></div></div>`;
   },
@@ -495,22 +499,53 @@ const Pages={
   // PROFILE
   profile(){
     const u=Auth.cu;if(!u)return'';
-    const myTxs=DB.txs().filter(t=>t.userId===u.id);
-    return`<div class="ph"><div class="ph-ttl">👤 Profil Saya</div></div>
-    <div class="pf-hdr"><div class="pf-av" id="pf-av">${u.avatar}</div><div class="pf-nm" id="pf-nm">${esc(u.name)}</div>
-    <div class="pf-em">${esc(u.email)}</div><div class="pf-role">${u.role==='admin'?'🛡️ Administrator':'👤 Member'}</div></div>
-    <div class="scont" style="margin-bottom:14px"><div class="stttl"><i class="bi bi-pencil-fill" style="color:var(--pr)"></i> Edit Profil</div>
-    <div class="fg"><label class="flbl">Nama Lengkap</label><input class="finp" id="ep-nm" type="text" value="${esc(u.name)}"></div>
-    <div class="fg"><label class="flbl">Email</label><input class="finp" type="email" value="${esc(u.email)}" disabled style="opacity:.55;cursor:not-allowed"><div class="fhint">Email tidak dapat diubah</div></div>
-    <div class="fg"><label class="flbl">No. WhatsApp</label><input class="finp" id="ep-ph" type="tel" placeholder="08xxxxxxxxxx" value="${esc(u.phone||'')}"></div>
-    <div style="border-top:1px solid var(--gy4);padding-top:14px;margin-top:4px"><div class="stttl" style="font-size:.95rem;margin-bottom:14px"><i class="bi bi-shield-lock-fill" style="color:var(--sc)"></i> Ganti Password</div>
-    <div class="fg"><label class="flbl">Password Saat Ini</label><input class="finp" id="ep-pwc" type="password" placeholder="Password lama"></div>
-    <div class="fg"><label class="flbl">Password Baru</label><input class="finp" id="ep-pwn" type="password" placeholder="Min. 6 karakter"></div></div>
-    <button class="btn-pr" style="width:100%" onclick="saveProf()"><i class="bi bi-check-circle-fill"></i> Simpan Perubahan</button></div>
-    <div class="scont" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center">
-    <div><div style="font-weight:600;margin-bottom:2px">Riwayat Transaksi</div><div style="font-size:.78rem;color:var(--gy)">${myTxs.length} pesanan</div></div>
-    <button class="btn-sec" onclick="R.go('history')" style="padding:8px 14px;font-size:.8rem">Lihat Semua</button></div></div>
-    <button class="btn-sec" style="width:100%;color:var(--ac);border-color:var(--ac)" onclick="Auth.logout()"><i class="bi bi-box-arrow-left"></i> Logout dari Akun</button>`;
+    return`<section class="profile-page">
+      <header class="profile-heading"><h1>Edit Profil</h1><p>Perbarui informasi akun dan keamanan Anda.</p></header>
+      <div class="profile-identity">
+        <div class="pf-av" id="pf-av">${esc(u.avatar||u.name.charAt(0).toUpperCase())}</div>
+        <div class="pf-nm" id="pf-nm">${esc(u.name)}</div>
+        <div class="pf-em" id="pf-em">${esc(u.email)}</div>
+        <div class="profile-notice">Foto profil belum dapat diganti dari website.</div>
+      </div>
+      <section class="profile-form" aria-label="Informasi profil">
+        <h2 class="profile-form-title">Informasi Pengguna</h2>
+        <div class="profile-fields">
+          <div class="profile-field">
+            <label for="ep-nm">Nama pengguna</label>
+            <input id="ep-nm" type="text" autocomplete="name" value="${esc(u.name)}" required>
+          </div>
+          <div class="profile-field">
+            <label for="ep-ph">Nomor kontak</label>
+            <input id="ep-ph" type="tel" autocomplete="tel" placeholder="08xxxxxxxxxx" value="${esc(u.phone||'')}" required>
+          </div>
+          <div class="profile-field full">
+            <label for="ep-em">Email</label>
+            <input id="ep-em" type="email" autocomplete="email" value="${esc(u.email)}" required>
+          </div>
+        </div>
+        <div class="profile-password-section">
+          <h2>Ganti Password</h2>
+          <div class="profile-fields">
+            <div class="profile-field full">
+              <label for="ep-pwc">Password lama</label>
+              <input id="ep-pwc" type="password" autocomplete="current-password" placeholder="Masukkan password lama">
+            </div>
+            <div class="profile-field">
+              <label for="ep-pwn">Password baru</label>
+              <input id="ep-pwn" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter">
+            </div>
+            <div class="profile-field">
+              <label for="ep-pwn-confirm">Konfirmasi password baru</label>
+              <input id="ep-pwn-confirm" type="password" autocomplete="new-password" placeholder="Ulangi password baru">
+            </div>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button type="button" onclick="R.go('home')">Batal</button>
+          <button type="button" class="profile-save" onclick="saveProf()">Simpan Perubahan</button>
+        </div>
+      </section>
+    </section>`;
   },
 
   // ADMIN
@@ -520,12 +555,12 @@ const Pages={
     const pend=txs.filter(t=>t.status==='pending').length;
     const done=txs.filter(t=>t.status==='done').length;
     const conf=txs.filter(t=>t.status==='confirmed').length;
-    return`<div class="ph"><div class="ph-ttl">🛡️ Admin Panel</div></div>
+    return`<div class="ph"><div class="ph-ttl"><i class="bi bi-shield-lock" aria-hidden="true"></i> Admin Panel</div></div>
     <div class="adm-stats">
-      <div class="asc"><span class="asc-ico">📊</span><div class="asc-lbl">Total Order</div><div class="asc-val">${txs.length}</div></div>
-      <div class="asc"><span class="asc-ico">⏳</span><div class="asc-lbl">Menunggu</div><div class="asc-val" style="color:var(--warn)">${pend}</div></div>
-      <div class="asc"><span class="asc-ico">✅</span><div class="asc-lbl">Konfirmasi</div><div class="asc-val" style="color:var(--ok)">${conf}</div></div>
-      <div class="asc"><span class="asc-ico">💰</span><div class="asc-lbl">Revenue Selesai</div><div class="asc-val" style="color:var(--pr);font-size:.95rem">${fmt(rev)}</div></div>
+      <div class="asc"><span class="asc-ico"><i class="bi bi-bar-chart" aria-hidden="true"></i></span><div class="asc-lbl">Total Order</div><div class="asc-val">${txs.length}</div></div>
+      <div class="asc"><span class="asc-ico"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span><div class="asc-lbl">Menunggu</div><div class="asc-val" style="color:var(--warn)">${pend}</div></div>
+      <div class="asc"><span class="asc-ico"><i class="bi bi-check-circle" aria-hidden="true"></i></span><div class="asc-lbl">Konfirmasi</div><div class="asc-val" style="color:var(--ok)">${conf}</div></div>
+      <div class="asc"><span class="asc-ico"><i class="bi bi-currency-exchange" aria-hidden="true"></i></span><div class="asc-lbl">Revenue Selesai</div><div class="asc-val" style="color:var(--pr);font-size:.95rem">${fmt(rev)}</div></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
       ${['Semua','Pending','Confirmed','Done','Cancelled'].map(s=>`<button onclick="fAdmTx('${s.toLowerCase()}')" id="atf-${s.toLowerCase()}" style="white-space:nowrap;padding:6px 14px;border-radius:50px;border:1.5px solid var(--gy3);background:var(--wh);font-family:var(--fn);font-size:.78rem;font-weight:600;cursor:pointer;transition:var(--tr)">${s}</button>`).join('')}
@@ -541,16 +576,16 @@ const Pages={
     if(!txs.length)return'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gy)">Belum ada transaksi</td></tr>';
     return txs.map(tx=>`<tr>
       <td style="font-size:.7rem;color:var(--gy);font-family:monospace">${tx.id.slice(-8)}</td>
-      <td><div style="font-weight:600;font-size:.83rem">${tx.productIcon?`<img src="${tx.productIcon}" style="width:20px;height:20px;vertical-align:middle;border-radius:4px;margin-right:4px">`:'📦'} ${esc(tx.productName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.variantName)}</div></td>
+      <td><div style="font-weight:600;font-size:.83rem">${tx.productIcon?`<img src="${tx.productIcon}" style="width:20px;height:20px;vertical-align:middle;border-radius:4px;margin-right:4px">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'} ${esc(tx.productName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.variantName)}</div></td>
       <td><div style="font-size:.83rem;font-weight:500">${esc(tx.userName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.userWA||'-')}</div></td>
       <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
       <td style="font-size:.8rem">${PMETHODS.find(m=>m.id===tx.paymentMethod)?.name||tx.paymentMethod||'-'}</td>
       <td>${sbdg(tx.status)}</td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${tx.status==='pending'?`<button class="adm-abtn ab-ok" onclick="updTx('${tx.id}','confirmed')">✅ Konfirmasi</button>`:''} 
-        ${tx.status==='confirmed'?`<button class="adm-abtn ab-fin" onclick="updTx('${tx.id}','done')">🎉 Selesai</button>`:''} 
-        ${tx.status!=='cancelled'&&tx.status!=='done'?`<button class="adm-abtn ab-del" onclick="updTx('${tx.id}','cancelled')">✕</button>`:''}
-        <button class="adm-abtn" style="background:var(--pr-l);color:var(--pr-d)" onclick="admWA('${tx.id}')">💬</button>
+        ${tx.status==='pending'?`<button class="adm-abtn ab-ok" onclick="updTx('${tx.id}','confirmed')"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''} 
+        ${tx.status==='confirmed'?`<button class="adm-abtn ab-fin" onclick="updTx('${tx.id}','done')"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''} 
+        ${tx.status!=='cancelled'&&tx.status!=='done'?`<button class="adm-abtn ab-del" onclick="updTx('${tx.id}','cancelled')" aria-label="Batalkan"><i class="bi bi-x-lg" aria-hidden="true"></i></button>`:''}
+        <button class="adm-abtn" style="background:var(--pr-l);color:var(--pr-d)" onclick="admWA('${tx.id}')" aria-label="Hubungi pelanggan"><i class="bi bi-chat-dots" aria-hidden="true"></i></button>
       </div></td></tr>`).join('');
   },
 };
@@ -567,7 +602,7 @@ function hiAErr(id){const el=$(id);if(el)el.classList.remove('show')}
 function doLogin(){
   const em=$('le-em')?.value.trim(),pw=$('le-pw')?.value,rem=$('le-rem')?.checked;
   hiAErr('le');
-  try{Auth.login(em,pw,rem);toast('Selamat datang, '+Auth.cu.name+'! 👋','success');R.go('home')}
+  try{Auth.login(em,pw,rem);toast('Selamat datang, '+Auth.cu.name,'success');R.go('home')}
   catch(e){shAErr('le',e.message)}
 }
 
@@ -575,7 +610,7 @@ function doReg(){
   const nm=$('re-nm')?.value,em=$('re-em')?.value,pw=$('re-pw')?.value,cf=$('re-cf')?.value;
   hiAErr('re');
   if(pw!==cf){shAErr('re','Password dan konfirmasi tidak cocok');return}
-  try{Auth.reg(nm,em,pw);Auth.login(em,pw,false);toast('Akun berhasil dibuat! Selamat bergabung 🎉','success');R.go('home')}
+  try{Auth.reg(nm,em,pw);Auth.login(em,pw,false);toast('Akun berhasil dibuat! Selamat bergabung','success');R.go('home')}
   catch(e){shAErr('re',e.message)}
 }
 
@@ -585,7 +620,7 @@ function doForg(){
   if(!em||!vEmail(em)){shAErr('fe','Masukkan email yang valid');return}
   const u=DB.findU(em);
   if(!u){shAErr('fe','Email tidak ditemukan di sistem kami');return}
-  if(ro){ro.classList.add('show');ro.innerHTML=`✅ Akun ditemukan! Nama: <strong>${esc(u.name)}</strong><br><span style="font-size:.78rem;opacity:.75">Silakan hubungi admin WA untuk reset password.</span><br><a href="https://wa.me/${CFG.adminWA}?text=${encodeURIComponent('Halo Admin, saya lupa password akun Seloss Store email: '+em)}" target="_blank" style="color:#34d399;font-weight:600">💬 Chat Admin WA</a>`}
+  if(ro){ro.classList.add('show');ro.innerHTML=`<i class="bi bi-check-circle" aria-hidden="true"></i> Akun ditemukan! Nama: <strong>${esc(u.name)}</strong><br><span style="font-size:.78rem;opacity:.75">Silakan hubungi admin WA untuk reset password.</span><br><a href="https://wa.me/${CFG.adminWA}?text=${encodeURIComponent('Halo Admin, saya lupa password akun Seloss Store email: '+em)}" target="_blank" style="color:#2563EB;font-weight:600"><i class="bi bi-chat-dots" aria-hidden="true"></i> Chat Admin WA</a>`}
 }
 
 function demoLogin(role){
@@ -598,7 +633,7 @@ function demoLogin(role){
       }
       Auth.login('user1seloss@jimail.com','Masuk123',true);
     }
-    toast('Login berhasil! Selamat menjelajah 🚀','success');R.go('home');
+    toast('Login berhasil! Selamat menjelajah','success');R.go('home');
   }catch(e){toast(e.message,'error')}
 }
 
@@ -729,7 +764,7 @@ function renderOrderSummary(){
 
 function renderFormatStep(){
   const cd=St.co,p=cd.prod,v=cd.variant;
-  if(!p||!v) return '<div class="empty-st"><span class="ei">🛒</span><h3>Tidak ada produk dipilih</h3></div>';
+  if(!p||!v) return '<div class="empty-st"><span class="ei"><i class="bi bi-cart" aria-hidden="true"></i></span><h3>Tidak ada produk dipilih</h3></div>';
 
   return `
     <div class="checkout-format">
@@ -825,7 +860,7 @@ function renderPaymentStep(){
         <div class="co-proof-box">
           <label class="co-proof-label">Upload Bukti Transfer</label>
           <div class="co-proof-drop" onclick="triggerProofUpload()">
-            <span class="co-proof-icon">📸</span>
+            <span class="co-proof-icon"><i class="bi bi-image" aria-hidden="true"></i></span>
             <div class="co-proof-text">Pilih gambar bukti transfer</div>
             <div class="co-proof-sub">PNG, JPG, JPEG • Maksimal 10MB</div>
           </div>
@@ -850,7 +885,7 @@ function renderFinishStep(){
   return `
     <div class="checkout-finish">
       <div class="co-finish-card">
-        <div class="co-finish-icon">✓</div>
+        <div class="co-finish-icon"><i class="bi bi-check-lg" aria-hidden="true"></i></div>
         <h3>Selamat, pesananmu berhasil dibuat!</h3>
         <p>Pesanan sudah dicatat dan Anda dapat menghubungi admin melalui WhatsApp untuk proses selanjutnya.</p>
         <div class="co-finish-summary">
@@ -886,7 +921,7 @@ function procFile(file){
     const area=$('upl-area'),prev=$('upl-prev'),ico=$('upl-ico'),txt=$('upl-t'),hint=$('upl-h'),nb=$('btn-nu');
     if(area)area.classList.add('ok');
     if(prev){prev.src=e.target.result;prev.style.display='block'}
-    if(ico)ico.textContent='✅';if(txt)txt.textContent='Bukti berhasil diupload!';
+    if(ico)ico.innerHTML='<i class="bi bi-check-lg" aria-hidden="true"></i>';if(txt)txt.textContent='Bukti berhasil diupload!';
     if(hint)hint.textContent=file.name;if(nb)nb.disabled=false;
     toast('Bukti pembayaran berhasil diupload!','success');
   };
@@ -929,7 +964,7 @@ function downloadCurrentQr(){
   link.remove();
 }
 
-function afterWA(){toast('Pesananmu sedang diproses admin! 🎉','success')}
+function afterWA(){toast('Pesananmu sedang diproses admin','success')}
 function newCo(){St.resetCo();R.go('home')}
 
 // ── HISTORY / TX DETAIL ───────────────────────────────────────
@@ -937,16 +972,16 @@ function showTxD(txId){
   const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
   const modal=$('tx-modal'),mc=$('tx-mc');if(!modal||!mc)return;
   const pm=PMETHODS.find(m=>m.id===tx.paymentMethod);
-  mc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem">📋 Detail Transaksi</div><button onclick="closeTxM()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--gy)">×</button></div>
-  <div style="text-align:center;margin-bottom:10px">${tx.productIcon?`<img src="${tx.productIcon}" style="width:64px;height:64px;border-radius:12px;object-fit:cover">`:'<span style="font-size:2.5rem">📦</span>'}</div>
+  mc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem"><i class="bi bi-receipt" aria-hidden="true"></i> Detail Transaksi</div><button onclick="closeTxM()" aria-label="Tutup" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--gy)"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+  <div style="text-align:center;margin-bottom:10px">${tx.productIcon?`<img src="${tx.productIcon}" style="width:64px;height:64px;border-radius:12px;object-fit:cover">`:'<span style="font-size:2.5rem"><i class="bi bi-box-seam" aria-hidden="true"></i></span>'}</div>
   <div style="text-align:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem">${esc(tx.productName)}</div><div style="font-size:.8rem;color:var(--gy)">${esc(tx.variantName)}</div><div style="margin-top:8px">${sbdg(tx.status)}</div></div>
   <div style="background:var(--gy5);border-radius:var(--r2);padding:14px;font-size:.83rem">
     ${[['ID Transaksi',`<span style="font-family:monospace;font-size:.72rem">${tx.id}</span>`],['Tanggal',fdt(tx.createdAt)],['Pembeli',esc(tx.userName)],['WhatsApp',esc(tx.userWA||'-')],['Email',esc(tx.userEmail||'-')],['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],['Metode',esc(pm?.name||tx.paymentMethod||'-')]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gy4)"><span style="color:var(--gy)">${k}</span><span style="text-align:right;max-width:60%">${v}</span></div>`).join('')}
   </div>
   ${Auth.isAdm()&&tx.status!=='done'&&tx.status!=='cancelled'?`<div style="display:flex;gap:8px;margin-top:16px">
-    ${tx.status==='pending'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','confirmed');closeTxM()">✅ Konfirmasi</button>`:''}
-    ${tx.status==='confirmed'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','done');closeTxM()">🎉 Selesai</button>`:''}
-    <button style="padding:10px;background:var(--ac-l);color:#991b1b;border:none;border-radius:var(--r2);font-family:var(--fn);font-weight:600;cursor:pointer;font-size:.85rem" onclick="updTx('${tx.id}','cancelled');closeTxM()">✕ Batal</button>
+    ${tx.status==='pending'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','confirmed');closeTxM()"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
+    ${tx.status==='confirmed'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','done');closeTxM()"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''}
+    <button style="padding:10px;background:var(--ac-l);color:#991b1b;border:none;border-radius:var(--r2);font-family:var(--fn);font-weight:600;cursor:pointer;font-size:.85rem" onclick="updTx('${tx.id}','cancelled');closeTxM()"><i class="bi bi-x-lg" aria-hidden="true"></i> Batal</button>
   </div>`:''}`;
   modal.classList.add('show');
 }
@@ -954,19 +989,55 @@ function closeTxM(){const m=$('tx-modal');if(m)m.classList.remove('show')}
 
 // ── PROFILE ───────────────────────────────────────────────────
 function saveProf(){
-  const u=Auth.cu,nm=$('ep-nm')?.value.trim(),ph=$('ep-ph')?.value.trim(),pwc=$('ep-pwc')?.value,pwn=$('ep-pwn')?.value;
-  if(!nm){toast('Nama tidak boleh kosong','error');return}
-  if(pwc||pwn){
-    if(!pwc){toast('Masukkan password saat ini','error');return}
-    if(u.passwordHash!==hs(pwc)){toast('Password saat ini salah','error');return}
-    if(!pwn||pwn.length<6){toast('Password baru minimal 6 karakter','error');return}
-    u.passwordHash=hs(pwn);
+  const user=Auth.cu;
+  if(!user){R.go('login');return}
+  const name=$('ep-nm')?.value.trim()||'';
+  const phoneInput=$('ep-ph')?.value.trim()||'';
+  const email=($('ep-em')?.value.trim()||'').toLowerCase();
+  const currentPassword=$('ep-pwc')?.value||'';
+  const newPassword=$('ep-pwn')?.value||'';
+  const confirmPassword=$('ep-pwn-confirm')?.value||'';
+
+  if(!name||!phoneInput||!email){toast('Nama, nomor kontak, dan email wajib diisi','error');return}
+  if(!vEmail(email)){toast('Format email tidak valid','error');return}
+  if(!vWA(phoneInput)){toast('Format nomor kontak tidak valid','error');return}
+
+  const existingUser=DB.findU(email);
+  if(existingUser&&existingUser.id!==user.id){toast('Email sudah digunakan akun lain','error');return}
+
+  const passwordRequested=Boolean(currentPassword||newPassword||confirmPassword);
+  if(passwordRequested){
+    if(!currentPassword||!newPassword||!confirmPassword){toast('Lengkapi semua field ganti password','error');return}
+    if(user.passwordHash!==hs(currentPassword)){toast('Password lama tidak sesuai','error');return}
+    if(newPassword.length<6){toast('Password baru minimal 6 karakter','error');return}
+    if(newPassword!==confirmPassword){toast('Konfirmasi password baru tidak cocok','error');return}
   }
-  u.name=nm;u.phone=ph;u.avatar=nm[0].toUpperCase();
-  DB.upsertU(u);Auth.cu=u;
-  const pav=$('pf-av'),pnm=$('pf-nm'),nav=$('nav-av');
-  if(pav)pav.textContent=u.avatar;if(pnm)pnm.textContent=nm;if(nav)nav.textContent=u.avatar;
-  toast('Profil berhasil disimpan! ✅','success');
+
+  const updatedUser={
+    ...user,
+    name,
+    email,
+    phone:nWA(phoneInput),
+    avatar:name[0].toUpperCase(),
+    ...(passwordRequested?{passwordHash:hs(newPassword)}:{})
+  };
+  DB.upsertU(updatedUser);
+  const savedUser=DB.findById(updatedUser.id);
+  if(!savedUser||savedUser.name!==name||savedUser.email!==email||savedUser.phone!==updatedUser.phone||savedUser.passwordHash!==updatedUser.passwordHash){
+    toast('Perubahan profil gagal disimpan','error');
+    return;
+  }
+
+  Auth.cu=savedUser;
+  toast('Perubahan profil berhasil disimpan','success');
+  R.go('profile');
+}
+
+function doLogout(){
+  Auth.logout();
+  St.resetCo();
+  closeSB();
+  R.go('login');
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
@@ -981,22 +1052,20 @@ function updTx(txId,newSt){
   const txs=DB.txs(),tx=txs.find(t=>t.id===txId);if(!tx)return;
   tx.status=newSt;tx.updatedAt=new Date().toISOString();DB.upsertTx(tx);
   const lbl={confirmed:'dikonfirmasi',done:'diselesaikan',cancelled:'dibatalkan'};
-  toast(`Pesanan berhasil ${lbl[newSt]||newSt}! ✅`,'success');
+  toast(`Pesanan berhasil ${lbl[newSt]||newSt}`,'success');
   const tb=$('adm-tbody');if(tb)tb.innerHTML=Pages.admRows(DB.txs());
 }
 
 function admWA(txId){
   const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
   const wa=tx.userWA;if(!wa){toast('User tidak memiliki nomor WA','warning');return}
-  const msg=`Halo ${tx.userName}! 👋\n\nPesanan kamu di *Seloss Store* sudah kami terima:\n📦 ${tx.productName} (${tx.variantName})\n💰 Total: ${fmt(tx.amount)}\n\nSegera diproses ya! Terima kasih sudah berbelanja di Seloss Store ✨`;
+  const msg=`Halo ${tx.userName}!\n\nPesanan kamu di *Seloss Store* sudah kami terima:\n${tx.productName} (${tx.variantName})\nTotal: ${fmt(tx.amount)}\n\nSegera diproses ya! Terima kasih sudah berbelanja di Seloss Store.`;
   window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
 // ── MOBILE SEARCH ────────────────────────────────────────────
 // Show search icon button on small screens
 window.addEventListener('resize',()=>{
-  const msb=$('mob-srch-btn');
-  if(msb)msb.style.display=window.innerWidth<=480?'flex':'none';
 });
 
 // ============================================================
@@ -1029,12 +1098,16 @@ const R = {
         return;
       }
       if (authEl) authEl.style.display = 'none';
-      if (appEl)  appEl.style.display  = 'block';
+      if (appEl)  appEl.style.display  = 'flex';
       updNav();
       Pages.app(page, params);
     }
   }
 };
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && !Auth.check()) R.go('login');
+});
 
 // ============================================================
 //  BANNER SLIDER (Manual Slide)
@@ -1124,7 +1197,7 @@ function startCD(endMs, elId) {
 // ============================================================
 function copyT(text) {
   navigator.clipboard?.writeText(text)
-    .then(() => toast('Disalin ke clipboard! 📋', 'success'))
+    .then(() => toast('Disalin ke clipboard!', 'success'))
     .catch(() => toast('Gagal menyalin teks', 'error'));
 }
 
@@ -1158,10 +1231,6 @@ function initApp() {
       })
       .catch(() => {});
   }
-
-  // Mobile search button visibility
-  const msb = $('mob-srch-btn');
-  if (msb) msb.style.display = window.innerWidth <= 480 ? 'flex' : 'none';
 
   // ── Expose ALL functions to window for inline HTML event handlers ──
   window.R                 = R;
@@ -1203,6 +1272,7 @@ function initApp() {
   window.showTxD           = showTxD;
   window.closeTxM          = closeTxM;
   window.saveProf          = saveProf;
+  window.doLogout          = doLogout;
   window.newCo             = newCo;
   window.afterWA           = afterWA;
   window.trigUpload        = trigUpload;

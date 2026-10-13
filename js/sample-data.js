@@ -115,10 +115,10 @@ export function sampleBanners() {
       title: '',
       sub: ''
     },
-    { tag: '🔥 Paling Laris', title: 'Larisann!\nPilihan Terfavorit', sub: 'Canva, Capcut, Netflix & ChatGPT — harga terjangkau!', bg: 'linear-gradient(135deg,#10052a 0%,#0a1628 60%,#1a0a00 100%)' },
-    { tag: '🎬 Streaming Premium', title: 'Netflix, Disney\n& WeTV Murah!', sub: 'Nonton tanpa batas mulai Rp15.000', bg: 'linear-gradient(135deg,#071a10 0%,#0a1628 60%,#0a1a10 100%)' },
-    { tag: '✏️ Editing Tools', title: 'Canva, Capcut\n& Alight Motion!', sub: 'Edit konten profesional harga terjangkau', bg: 'linear-gradient(135deg,#1a0a33 0%,#0a0a28 100%)' },
-    { tag: '🤖 AI Premium', title: 'ChatGPT & Gemini\nHarga Terbaik!', sub: 'AI canggih untuk produktivitas harianmu', bg: 'linear-gradient(135deg,#0a1a10 0%,#1a0a33 100%)' },
+    { tag: 'Paling Laris', title: 'Larisann!\nPilihan Terfavorit', sub: 'Canva, Capcut, Netflix & ChatGPT — harga terjangkau!', bg: 'linear-gradient(135deg,#10052a 0%,#0a1628 60%,#1a0a00 100%)' },
+    { tag: 'Streaming Premium', title: 'Netflix, Disney\n& WeTV Murah!', sub: 'Nonton tanpa batas mulai Rp15.000', bg: 'linear-gradient(135deg,#071a10 0%,#0a1628 60%,#0a1a10 100%)' },
+    { tag: 'Editing Tools', title: 'Canva, Capcut\n& Alight Motion!', sub: 'Edit konten profesional harga terjangkau', bg: 'linear-gradient(135deg,#1a0a33 0%,#0a0a28 100%)' },
+    { tag: 'AI Premium', title: 'ChatGPT & Gemini\nHarga Terbaik!', sub: 'AI canggih untuk produktivitas harianmu', bg: 'linear-gradient(135deg,#0a1a10 0%,#1a0a33 100%)' },
   ];
 }
 

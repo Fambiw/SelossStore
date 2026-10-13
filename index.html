@@ -19,7 +19,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=1.2.0">
+  <link rel="stylesheet" href="css/style.css?v=1.3.0">
 </head>
 
 <body>
@@ -47,64 +47,56 @@
      APP SECTION
 ======================================================== -->
 <div id="app" style="display:none">
-
-  <!-- NAVBAR -->
-  <nav class="nav">
-    <button class="nav-hbg" id="hbg" onclick="tglSB()" aria-label="Menu"><i class="bi bi-list"></i></button>
-    <div class="nav-brand" onclick="R.go('home')" style="cursor:pointer">Seloss</div>
-    <div class="nav-search">
-      <i class="bi bi-search s-ico"></i>
-      <input type="text" id="srch-inp" placeholder="Cari produk..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch()">
-    </div>
-    <div class="nav-acts">
-      <button class="nav-ico" onclick="tglMobSearch()" title="Cari" style="display:none" id="mob-srch-btn"><i class="bi bi-search"></i></button>
-      <button class="nav-ico" onclick="R.go('history')" title="Transaksi"><i class="bi bi-receipt"></i></button>
-      <div class="nav-av" id="nav-av" onclick="R.go('profile')" title="Profil"></div>
-    </div>
-  </nav>
-
-  <!-- MOBILE SEARCH BAR -->
-  <div class="mob-sb" id="mob-sb" style="position:relative">
-    <i class="bi bi-search s-ico"></i>
-    <input type="text" id="mob-srch-inp" placeholder="Cari produk..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch()">
-  </div>
-
-  <!-- SIDEBAR -->
   <aside class="sb" id="sb">
+    <div class="sb-brand">Seloss Store</div>
+    <button class="sb-profile" id="sb-profile" onclick="R.go('profile')" aria-label="Edit profil">
+      <span class="sb-avatar" id="sb-avatar"></span>
+      <span class="sb-user-copy"><strong id="sb-user-name"></strong><small id="sb-user-role"></small></span>
+      <i class="bi bi-chevron-down" aria-hidden="true"></i>
+    </button>
     <div class="sb-content">
-      <div class="sb-label">Menu Utama</div>
-      <button class="sb-item" id="sbi-home" onclick="R.go('home')"><i class="bi bi-house-fill si"></i><span>Beranda</span></button>
-      <button class="sb-item" id="sbi-hist" onclick="R.go('history')"><i class="bi bi-receipt si"></i><span>Transaksi</span></button>
-      <button class="sb-item" id="sbi-prof" onclick="R.go('profile')"><i class="bi bi-person-fill si"></i><span>Profil Saya</span></button>
-      <div class="sb-label">Kategori</div>
-      <button class="sb-item" onclick="gocat('semuaan')"><span>Semuaan</span></button>
-      <button class="sb-item" onclick="gocat('larisann')"><span>Larisann</span></button>
-      <button class="sb-item" onclick="gocat('ngeditann')"><span>Ngeditann</span></button>
-      <button class="sb-item" onclick="gocat('streamingann')"><span>Streamingann</span></button>
-      <button class="sb-item" onclick="gocat('ai-ann')"><span>AI-ann</span></button>
-      <div class="sb-label" id="sb-admin-lbl" style="display:none">Administrator</div>
-      <button class="sb-item" id="sbi-adm" onclick="R.go('admin')" style="display:none"><i class="bi bi-shield-fill si"></i><span>Admin Panel</span></button>
-      <div class="sb-label">Akun</div>
-      <button class="sb-item" onclick="Auth.logout()" style="color:#fca5a5"><i class="bi bi-box-arrow-left si"></i><span>Logout</span></button>
+      <div class="sb-admin-group" id="sb-admin-group" style="display:none">
+        <button class="sb-item" id="sbi-adm" onclick="R.go('admin')"><i class="bi bi-grid-1x2 si" aria-hidden="true"></i><span>Dashboard</span></button>
+      </div>
+      <div class="sb-label">MAIN MENU</div>
+      <button class="sb-item" id="sbi-home" onclick="R.go('home')"><i class="bi bi-house si" aria-hidden="true"></i><span>Beranda</span></button>
+      <button class="sb-item" id="sbi-hist" onclick="R.go('history')"><i class="bi bi-receipt si" aria-hidden="true"></i><span>Transaksi</span></button>
+      <div class="sb-label">KATEGORI</div>
+      <button class="sb-item category-item" data-category="semuaan" onclick="gocat('semuaan')"><span>Semuaan</span></button>
+      <button class="sb-item category-item" data-category="larisann" onclick="gocat('larisann')"><span>Larisann</span></button>
+      <button class="sb-item category-item" data-category="ngeditann" onclick="gocat('ngeditann')"><span>Ngeditann</span></button>
+      <button class="sb-item category-item" data-category="streamingann" onclick="gocat('streamingann')"><span>Streamingann</span></button>
+      <button class="sb-item category-item" data-category="ai-ann" onclick="gocat('ai-ann')"><span>AI-ann</span></button>
+    </div>
+    <div class="sb-footer">
+      <button class="sb-item sb-logout" onclick="doLogout()"><i class="bi bi-box-arrow-left si" aria-hidden="true"></i><span>Logout</span></button>
     </div>
   </aside>
   <div class="sb-ov" id="sb-ov" onclick="closeSB()"></div>
 
-  <!-- MAIN CONTENT -->
-  <main class="main" id="main"></main>
-
-  <!-- BOTTOM NAV -->
-  <nav class="bn">
-    <div class="bn-inner">
-      <button class="bn-it" id="bni-home" onclick="R.go('home')"><i class="bi bi-house-fill"></i><span>Beranda</span></button>
-      <button class="bn-it" id="bni-hist" onclick="R.go('history')"><i class="bi bi-receipt"></i><span>Transaksi</span></button>
-      <button class="bn-it" id="bni-prof" onclick="R.go('profile')"><i class="bi bi-person-fill"></i><span>Profil</span></button>
-      <button class="bn-it" id="bni-adm" onclick="R.go('admin')" style="display:none"><i class="bi bi-shield-fill"></i><span>Admin</span></button>
-    </div>
-  </nav>
+  <div class="app-main">
+    <header class="topbar">
+      <button class="topbar-menu-toggle" onclick="tglSB()" aria-label="Buka menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+      <div class="topbar-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" id="srch-inp" placeholder="Cari produk..." aria-label="Cari produk" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch()">
+      </div>
+      <div class="topbar-actions">
+        <details class="topbar-menu">
+          <summary><i class="bi bi-gear" aria-hidden="true"></i><span>Pengaturan</span></summary>
+          <div class="topbar-popover">Pengaturan belum tersedia.</div>
+        </details>
+        <details class="topbar-menu">
+          <summary><i class="bi bi-headset" aria-hidden="true"></i><span>CS</span></summary>
+          <div class="topbar-popover">Layanan customer service belum tersedia.</div>
+        </details>
+      </div>
+    </header>
+    <main class="main" id="main"></main>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script type="module" src="js/main.js?v=1.2.0"></script>
+<script type="module" src="js/main.js?v=1.3.0"></script>
 </body>
 </html>

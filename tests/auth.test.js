@@ -75,6 +75,28 @@ describe('Auth Module', () => {
       expect(Auth.check()).toBe(true);
       expect(Auth.cu.email).toBe('test@example.com');
     });
+
+    it('should reject a cached user when the persisted session is missing', () => {
+      Auth.reg('Test', 'test@example.com', 'pass123');
+      Auth.login('test@example.com', 'pass123');
+      DB.clrSes();
+
+      expect(Auth.check()).toBe(false);
+      expect(Auth.cu).toBeNull();
+    });
+  });
+
+  describe('Logout', () => {
+    it('should clear the persisted session and current user', () => {
+      Auth.reg('Test', 'test@example.com', 'pass123');
+      Auth.login('test@example.com', 'pass123');
+
+      Auth.logout();
+
+      expect(DB.ses()).toBeNull();
+      expect(Auth.cu).toBeNull();
+      expect(Auth.check()).toBe(false);
+    });
   });
 
   describe('Predefined Admin & User Accounts', () => {

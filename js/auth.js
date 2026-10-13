@@ -59,9 +59,11 @@ export const Auth = {
   },
   
   check() {
-    if (this.cu) return true;
     const s = DB.ses();
-    if (!s) return false;
+    if (!s) {
+      this.cu = null;
+      return false;
+    }
     
     if (new Date() > new Date(s.expiresAt)) {
       this.logout();
