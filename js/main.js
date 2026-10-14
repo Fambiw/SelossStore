@@ -44,7 +44,6 @@ export function rmT(id) {
 window.rmT = rmT;
 
 
-// ── UPDATE NAV UI ────────────────────────────────────────────
 function updNav(){
   const u=Auth.cu;if(!u)return;
   const avatar=u.avatar||u.name?.[0]||'';
@@ -55,11 +54,30 @@ function updNav(){
   const isAdm=Auth.isAdm();
   const adminGroup=$('sb-admin-group');if(adminGroup)adminGroup.style.display=isAdm?'':'none';
   const pg=R.cur;
-  const map={home:['sbi-home'],history:['sbi-hist'],profile:['sb-profile'],admin:['sbi-adm']};
+  // Clear all active states
   document.querySelectorAll('.sb-item,.sb-profile,.category-item').forEach(el=>el.classList.remove('act'));
-  if(map[pg])map[pg].forEach(id=>{const el=$(id);if(el)el.classList.add('act')});
+  // Set active based on page
+  if(pg==='home'){$('sbi-home')?.classList.add('act')}
+  else if(pg==='history'){$('sbi-hist')?.classList.add('act')}
+  else if(pg==='profile'){$('sb-profile')?.classList.add('act')}
+  else if(pg==='admin'){
+    const sub=window._admSub||'dashboard';
+    $(`sbi-adm-${sub}`)?.classList.add('act');
+  }
   document.querySelector(`.category-item[data-category="${St.cat}"]`)?.classList.add('act');
+  // Update search bar placeholder based on active admin sub-page
+  const srch=$('srch-inp');
+  if(srch){
+    if(pg==='admin'){
+      const sub=window._admSub||'dashboard';
+      const ph={dashboard:'Dashboard — statistik penjualan',products:'Cari produk...',orders:'Cari pesanan, pembeli...'};
+      srch.placeholder=ph[sub]||'Cari...';
+    } else {
+      srch.placeholder='Cari produk...';
+    }
+  }
 }
+
 
 // ── SIDEBAR ──────────────────────────────────────────────────
 function tglSB(){$('sb')?.classList.toggle('open');$('sb-ov')?.classList.toggle('show')}
@@ -68,6 +86,7 @@ function gocat(c){St.cat=c;R.go('home');closeSB()}
 function openPriceModal(id){
   const p=DB.prods().find(pr=>pr.id===id);
   if(!p)return;
+  if(p.available===false){toast('Produk ini sedang tidak tersedia','warning');return;}
   const sheet=$('pl-sheet');
   const modal=$('pl-modal');
   if(!sheet||!modal)return;
@@ -236,7 +255,11 @@ const Pages={
     else if(page==='checkout')main.innerHTML=this.checkout();
     else if(page==='history')main.innerHTML=this.hist();
     else if(page==='profile')main.innerHTML=this.profile();
-    else if(page==='admin'){if(!Auth.isAdm()){toast('Akses ditolak','error');R.go('home');return}main.innerHTML=this.admin()}
+    else if(page==='admin'){
+      if(!Auth.isAdm()){toast('Akses ditolak','error');R.go('home');return;}
+      if(!window._admSub) window._admSub='dashboard';
+      main.innerHTML=this.admin();
+    }
     main.classList.remove('fade-in');void main.offsetWidth;main.classList.add('fade-in');
     if(page==='home')this.afterHome();
     if(page==='checkout')this.afterCo();
@@ -254,7 +277,7 @@ const Pages={
       {id:'streamingann',lbl:'Streamingann'},
       {id:'ai-ann',lbl:'AI-ann'}
     ];
-    let filtered=prods;
+    let filtered=prods.filter(p=>p.available!==false);
     if(cat!=='semuaan')filtered=filtered.filter(p=>Array.isArray(p.cat)?p.cat.includes(cat):p.cat===cat);
     if(q)filtered=filtered.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
     return`
@@ -280,7 +303,7 @@ const Pages={
 
   _filtered(){
     const prods=DB.prods();let cat=St.cat,q=St.q.toLowerCase();
-    let f=prods;
+    let f=prods.filter(p=>p.available!==false);
     if(cat!=='semuaan')f=f.filter(p=>Array.isArray(p.cat)?p.cat.includes(cat):p.cat===cat);
     if(q)f=f.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
     return f;
@@ -548,28 +571,216 @@ const Pages={
     </section>`;
   },
 
-  // ADMIN
+  // ADMIN — 3-menu panel
   admin(){
-    const txs=DB.txs();
-    const rev=txs.filter(t=>t.status==='done').reduce((s,t)=>s+t.amount,0);
-    const pend=txs.filter(t=>t.status==='pending').length;
-    const done=txs.filter(t=>t.status==='done').length;
-    const conf=txs.filter(t=>t.status==='confirmed').length;
-    return`<div class="ph"><div class="ph-ttl"><i class="bi bi-shield-lock" aria-hidden="true"></i> Admin Panel</div></div>
-    <div class="adm-stats">
-      <div class="asc"><span class="asc-ico"><i class="bi bi-bar-chart" aria-hidden="true"></i></span><div class="asc-lbl">Total Order</div><div class="asc-val">${txs.length}</div></div>
-      <div class="asc"><span class="asc-ico"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span><div class="asc-lbl">Menunggu</div><div class="asc-val" style="color:var(--warn)">${pend}</div></div>
-      <div class="asc"><span class="asc-ico"><i class="bi bi-check-circle" aria-hidden="true"></i></span><div class="asc-lbl">Konfirmasi</div><div class="asc-val" style="color:var(--ok)">${conf}</div></div>
-      <div class="asc"><span class="asc-ico"><i class="bi bi-currency-exchange" aria-hidden="true"></i></span><div class="asc-lbl">Revenue Selesai</div><div class="asc-val" style="color:var(--pr);font-size:.95rem">${fmt(rev)}</div></div>
+    if(!Auth.isAdm()){return''}
+    const sub = window._admSub || 'dashboard';
+    if(sub === 'products') return this.adminProducts();
+    if(sub === 'orders')   return this.adminOrders();
+    return this.adminDashboard();
+  },
+
+  // ── ADMIN DASHBOARD ────────────────────────────────────────
+  adminDashboard(){
+    const txs = DB.txs();
+    const now = new Date();
+    const ymOf = (d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const thisMonth = ymOf(now);
+
+    const validStatuses = ['done','confirmed'];
+    const soldTxs = txs.filter(t => validStatuses.includes(t.status));
+    const totalSold = soldTxs.reduce((s,t)=> s + (t.qty||1), 0);
+
+    const pendTxs = txs.filter(t => t.status === 'pending');
+    const pendItems = pendTxs.reduce((s,t)=> s + (t.qty||1), 0);
+
+    const doneTxs = txs.filter(t => t.status === 'done');
+    const doneItems = doneTxs.reduce((s,t)=> s + (t.qty||1), 0);
+
+    const monthRev = doneTxs
+      .filter(t => ymOf(new Date(t.createdAt)) === thisMonth)
+      .reduce((s,t)=> s + t.amount, 0);
+
+    const months = [];
+    for(let i=7; i>=0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const key = ymOf(d);
+      const label = d.toLocaleDateString('id-ID', {month:'short', year:'2-digit'});
+      const mTxs = doneTxs.filter(t => ymOf(new Date(t.createdAt)) === key);
+      const rev = mTxs.reduce((s,t)=>s+t.amount,0);
+      const items = mTxs.reduce((s,t)=>s+(t.qty||1),0);
+      months.push({key, label, rev, items});
+    }
+    const maxRev = Math.max(...months.map(m=>m.rev), 1);
+
+    const prodMap = {};
+    soldTxs.forEach(t => {
+      const k = t.productId || t.productName;
+      if(!prodMap[k]) prodMap[k] = {name: t.productName, icon: t.productIcon, units: 0};
+      prodMap[k].units += (t.qty||1);
+    });
+    const topProds = Object.values(prodMap).sort((a,b)=>b.units-a.units).slice(0,6);
+    const maxUnits = Math.max(...topProds.map(p=>p.units), 1);
+    const hasChart = months.some(m=>m.rev>0);
+
+    return `<div class="adm-page">
+      <div class="adm-page-hdr">
+        <div class="adm-page-hdr-left">
+          <button class="adm-mob-toggle" onclick="tglSB()" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+          <h1 class="adm-page-title"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+        </div>
+      </div>
+      <div class="adm-stats4">
+        <div class="asc4 asc4-blue"><div class="asc4-icon"><i class="bi bi-bag-check-fill"></i></div><div class="asc4-body"><div class="asc4-lbl">Total Item Terjual</div><div class="asc4-val">${totalSold.toLocaleString('id-ID')}</div><div class="asc4-sub">Pesanan valid (selesai+terkonfirmasi)</div></div></div>
+        <div class="asc4 asc4-warn"><div class="asc4-icon"><i class="bi bi-hourglass-split"></i></div><div class="asc4-body"><div class="asc4-lbl">Item Menunggu</div><div class="asc4-val">${pendItems.toLocaleString('id-ID')}</div><div class="asc4-sub">${pendTxs.length} pesanan menunggu</div></div></div>
+        <div class="asc4 asc4-ok"><div class="asc4-icon"><i class="bi bi-check-circle-fill"></i></div><div class="asc4-body"><div class="asc4-lbl">Item Selesai</div><div class="asc4-val">${doneItems.toLocaleString('id-ID')}</div><div class="asc4-sub">${doneTxs.length} pesanan selesai</div></div></div>
+        <div class="asc4 asc4-rev"><div class="asc4-icon"><i class="bi bi-wallet2"></i></div><div class="asc4-body"><div class="asc4-lbl">Pendapatan Bulan Ini</div><div class="asc4-val asc4-val-sm">${fmt(monthRev)}</div><div class="asc4-sub">${now.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</div></div></div>
+      </div>
+      <div class="adm-analytics-row">
+        <div class="adm-card adm-chart-card">
+          <div class="adm-card-hdr"><span class="adm-card-title"><i class="bi bi-bar-chart-line"></i> Pendapatan Bulanan</span></div>
+          ${!hasChart
+            ? `<div class="adm-empty"><i class="bi bi-bar-chart" style="font-size:2.5rem;color:var(--gy3)"></i><p>Belum ada data pendapatan</p></div>`
+            : `<div class="adm-bar-chart">${months.map((m,i)=>`
+                <div class="adm-bar-col" onclick="admChartClick(${i})" id="adm-bc-${i}">
+                  <div class="adm-bar-tooltip" id="adm-btt-${i}"><strong>${m.label}</strong><br><span>${fmt(m.rev)}</span><br><small>${m.items} item</small></div>
+                  <div class="adm-bar-wrap"><div class="adm-bar" style="height:${m.rev>0?Math.max(Math.round((m.rev/maxRev)*100),4):0}%"></div></div>
+                  <div class="adm-bar-lbl">${m.label}</div>
+                </div>`).join('')}</div>
+              <div class="adm-chart-detail" id="adm-chart-detail" style="display:none"></div>`}
+        </div>
+        <div class="adm-card adm-top-card">
+          <div class="adm-card-hdr"><span class="adm-card-title"><i class="bi bi-trophy"></i> Top Produk</span></div>
+          ${topProds.length === 0
+            ? `<div class="adm-empty"><i class="bi bi-trophy" style="font-size:2.5rem;color:var(--gy3)"></i><p>Belum ada transaksi</p></div>`
+            : `<div class="adm-top-list">${topProds.map((p,i)=>`
+                <div class="adm-top-item">
+                  <div class="adm-top-rank">${i+1}</div>
+                  <div class="adm-top-thumb">${p.icon?`<img src="${esc(p.icon)}" alt="${esc(p.name)}" onerror="this.style.display='none'">`:`<span>${esc((p.name||'?').charAt(0))}</span>`}</div>
+                  <div class="adm-top-info"><div class="adm-top-name">${esc(p.name)}</div><div class="adm-top-bar-wrap"><div class="adm-top-bar" style="width:${Math.round((p.units/maxUnits)*100)}%"></div></div></div>
+                  <div class="adm-top-units">${p.units} unit</div>
+                </div>`).join('')}</div>`}
+        </div>
+      </div>
+    </div>`;
+  },
+
+  // ── ADMIN EDIT PRODUK ───────────────────────────────────────
+  adminProducts(){
+    const prods = DB.prods();
+    const q = (window._admProdQ||'').toLowerCase();
+    const sf = window._admProdFilter || 'all';
+    let filtered = prods;
+    if(q) filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q));
+    if(sf === 'available') filtered = filtered.filter(p => p.available !== false);
+    if(sf === 'unavailable') filtered = filtered.filter(p => p.available === false);
+
+    return `<div class="adm-page">
+      <div class="adm-page-hdr">
+        <div class="adm-page-hdr-left">
+          <button class="adm-mob-toggle" onclick="tglSB()" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+          <h1 class="adm-page-title"><i class="bi bi-box-seam"></i> Edit Produk</h1>
+        </div>
+        <button class="adm-btn-primary" onclick="admProdNew()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>
+      </div>
+      <div class="adm-toolbar">
+        <div class="adm-srch-wrap">
+          <i class="bi bi-search"></i>
+          <input type="search" id="adm-prod-q" class="adm-srch-inp" placeholder="Cari produk..." value="${esc(window._admProdQ||'')}" oninput="admProdSearch(this.value)">
+        </div>
+        <div class="adm-filter-tabs">
+          <button class="adm-ftab${sf==='all'?' act':''}" onclick="admProdFilter('all')">Semua (${prods.length})</button>
+          <button class="adm-ftab${sf==='available'?' act':''}" onclick="admProdFilter('available')">Tersedia</button>
+          <button class="adm-ftab${sf==='unavailable'?' act':''}" onclick="admProdFilter('unavailable')">Tidak Tersedia</button>
+        </div>
+      </div>
+      <div class="adm-card" style="padding:0;overflow:hidden">
+        ${filtered.length === 0
+          ? `<div class="adm-empty"><i class="bi bi-search" style="font-size:2.5rem;color:var(--gy3)"></i><p>${q?'Produk tidak ditemukan':'Belum ada produk'}</p></div>`
+          : `<div class="adm-tbl-scroll"><table class="adm-table">
+              <thead><tr><th>Produk</th><th>Varian</th><th>Harga</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody>${filtered.map(p => {
+                const prices = p.vars.map(v=>v.p);
+                const minP = Math.min(...prices);
+                const maxP = Math.max(...prices);
+                const available = p.available !== false;
+                return `<tr>
+                  <td><div class="adm-prod-cell">
+                    <div class="adm-prod-thumb">${p.image?`<img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none">${esc(p.name.charAt(0))}</span>`:`<span>${esc(p.name.charAt(0))}</span>`}</div>
+                    <div><div class="adm-prod-name">${esc(p.name)}</div><div class="adm-prod-desc">${esc((p.desc||'').slice(0,55))}${(p.desc||'').length>55?'…':''}</div></div>
+                  </div></td>
+                  <td style="font-size:.78rem;color:var(--gy)">${p.vars.length} paket</td>
+                  <td style="font-size:.83rem;font-weight:600;color:var(--pr)">${minP===maxP?fmt(minP):fmt(minP)+'–'+fmt(maxP)}</td>
+                  <td><button class="adm-toggle-btn ${available?'avail':'unavail'}" onclick="admProdToggle('${p.id}')"><i class="bi bi-${available?'check-circle-fill':'x-circle-fill'}"></i> ${available?'Tersedia':'Nonaktif'}</button></td>
+                  <td><div class="adm-act-btns"><button class="adm-abtn ab-ok" onclick="admProdEdit('${p.id}')"><i class="bi bi-pencil"></i> Edit</button><button class="adm-abtn ab-del" onclick="admProdDel('${p.id}')"><i class="bi bi-trash"></i></button></div></td>
+                </tr>`;}).join('')}
+              </tbody></table></div>`}
+      </div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
-      ${['Semua','Pending','Confirmed','Done','Cancelled'].map(s=>`<button onclick="fAdmTx('${s.toLowerCase()}')" id="atf-${s.toLowerCase()}" style="white-space:nowrap;padding:6px 14px;border-radius:50px;border:1.5px solid var(--gy3);background:var(--wh);font-family:var(--fn);font-size:.78rem;font-weight:600;cursor:pointer;transition:var(--tr)">${s}</button>`).join('')}
+    <div class="adm-modal-ov" id="adm-prod-modal" style="display:none" onclick="if(event.target===this)admCloseProdModal()"><div class="adm-modal" id="adm-prod-modal-inner"></div></div>
+    <div class="adm-modal-ov" id="adm-del-modal" style="display:none" onclick="if(event.target===this)admCloseDelModal()"><div class="adm-modal adm-modal-sm" id="adm-del-modal-inner"></div></div>`;
+  },
+
+  // ── ADMIN PESANAN ───────────────────────────────────────────
+  adminOrders(){
+    const allTxs = DB.txs();
+    const q = (window._admOrdQ||'').toLowerCase();
+    const sf = window._admOrdFilter || 'all';
+    let filtered = allTxs;
+    if(q) filtered = filtered.filter(t =>
+      t.id.toLowerCase().includes(q) ||
+      (t.userName||'').toLowerCase().includes(q) ||
+      (t.productName||'').toLowerCase().includes(q) ||
+      (t.userWA||'').includes(q)
+    );
+    if(sf !== 'all') filtered = filtered.filter(t => t.status === sf);
+    const statusOpts = [{v:'all',l:'Semua Status'},{v:'pending',l:'Menunggu'},{v:'confirmed',l:'Dikonfirmasi'},{v:'processing',l:'Diproses'},{v:'done',l:'Selesai'},{v:'cancelled',l:'Dibatalkan'}];
+
+    return `<div class="adm-page">
+      <div class="adm-page-hdr">
+        <div class="adm-page-hdr-left">
+          <button class="adm-mob-toggle" onclick="tglSB()" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+          <h1 class="adm-page-title"><i class="bi bi-receipt"></i> Pesanan</h1>
+        </div>
+        <div class="adm-ord-count">${filtered.length} pesanan</div>
+      </div>
+      <div class="adm-toolbar adm-toolbar-wrap">
+        <div class="adm-srch-wrap">
+          <i class="bi bi-search"></i>
+          <input type="search" id="adm-ord-q" class="adm-srch-inp" placeholder="Cari ID, nama, produk..." value="${esc(window._admOrdQ||'')}" oninput="admOrdSearch(this.value)">
+        </div>
+        <select class="adm-select" onchange="admOrdFilter(this.value)">
+          ${statusOpts.map(o=>`<option value="${o.v}" ${sf===o.v?'selected':''}>${o.l}</option>`).join('')}
+        </select>
+      </div>
+      <div class="adm-card" style="padding:0;overflow:hidden">
+        ${filtered.length === 0
+          ? `<div class="adm-empty"><i class="bi bi-receipt" style="font-size:2.5rem;color:var(--gy3)"></i><p>${allTxs.length===0?'Belum ada pesanan':'Tidak ada pesanan yang cocok'}</p></div>`
+          : `<div class="adm-tbl-scroll"><table class="adm-table">
+              <thead><tr><th>ID</th><th>Produk</th><th>Pembeli</th><th>Metode</th><th>Total</th><th>Status</th><th>Tgl</th><th>Aksi</th></tr></thead>
+              <tbody>${filtered.map(tx => {
+                const pm = PMETHODS.find(m=>m.id===tx.paymentMethod);
+                return `<tr>
+                  <td style="font-family:monospace;font-size:.7rem;color:var(--gy)">${tx.id.slice(-10)}</td>
+                  <td><div style="display:flex;align-items:center;gap:8px">
+                    ${tx.productIcon?`<img src="${esc(tx.productIcon)}" style="width:28px;height:28px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">`:`<span style="width:28px;height:28px;border-radius:6px;background:var(--pr-l);color:var(--pr-d);display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">${esc((tx.productName||'?').charAt(0))}</span>`}
+                    <div><div style="font-weight:600;font-size:.82rem">${esc(tx.productName||'-')}</div><div style="font-size:.7rem;color:var(--gy)">${esc(tx.variantName||'-')}</div></div>
+                  </div></td>
+                  <td><div style="font-size:.83rem;font-weight:500">${esc(tx.userName||'-')}</div><div style="font-size:.7rem;color:var(--gy)">${esc(tx.userWA||'-')}</div></td>
+                  <td style="font-size:.8rem">${esc(pm?.name||tx.paymentMethod||'-')}</td>
+                  <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
+                  <td>${sbdg(tx.status)}</td>
+                  <td style="font-size:.73rem;color:var(--gy);white-space:nowrap">${fdt(tx.createdAt)}</td>
+                  <td><div class="adm-act-btns">
+                    <button class="adm-abtn" style="background:var(--pr-l);color:var(--pr-d)" onclick="admOrdDetail('${tx.id}')"><i class="bi bi-eye"></i></button>
+                    <button class="adm-abtn" style="background:#dcfce7;color:#166534" onclick="admWA('${tx.id}')" title="WhatsApp"><i class="bi bi-whatsapp"></i></button>
+                  </div></td>
+                </tr>`;}).join('')}
+              </tbody></table></div>`}
+      </div>
     </div>
-    <div class="adm-tbl"><div class="adm-tbl-scroll"><table>
-      <thead><tr><th>ID</th><th>Produk</th><th>Pembeli</th><th>Total</th><th>Bayar</th><th>Status</th><th>Aksi</th></tr></thead>
-      <tbody id="adm-tbody">${this.admRows(txs)}</tbody>
-    </table></div></div>
-    <div class="tx-modal" id="tx-modal"><div class="tx-mc" id="tx-mc"></div></div>`;
+    <div class="adm-modal-ov" id="adm-ord-modal" style="display:none" onclick="if(event.target===this)admCloseOrdModal()"><div class="adm-modal" id="adm-ord-modal-inner"></div></div>
+    <div class="adm-modal-ov" id="adm-confirm-modal" style="display:none" onclick="if(event.target===this)admCloseConfirmModal()"><div class="adm-modal adm-modal-sm" id="adm-confirm-modal-inner"></div></div>`;
   },
 
   admRows(txs){
@@ -582,13 +793,14 @@ const Pages={
       <td style="font-size:.8rem">${PMETHODS.find(m=>m.id===tx.paymentMethod)?.name||tx.paymentMethod||'-'}</td>
       <td>${sbdg(tx.status)}</td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${tx.status==='pending'?`<button class="adm-abtn ab-ok" onclick="updTx('${tx.id}','confirmed')"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''} 
-        ${tx.status==='confirmed'?`<button class="adm-abtn ab-fin" onclick="updTx('${tx.id}','done')"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''} 
+        ${tx.status==='pending'?`<button class="adm-abtn ab-ok" onclick="updTx('${tx.id}','confirmed')"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
+        ${tx.status==='confirmed'?`<button class="adm-abtn ab-fin" onclick="updTx('${tx.id}','done')"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''}
         ${tx.status!=='cancelled'&&tx.status!=='done'?`<button class="adm-abtn ab-del" onclick="updTx('${tx.id}','cancelled')" aria-label="Batalkan"><i class="bi bi-x-lg" aria-hidden="true"></i></button>`:''}
         <button class="adm-abtn" style="background:var(--pr-l);color:var(--pr-d)" onclick="admWA('${tx.id}')" aria-label="Hubungi pelanggan"><i class="bi bi-chat-dots" aria-hidden="true"></i></button>
       </div></td></tr>`).join('');
   },
 };
+
 
 // ============================================================
 //  ACTION HANDLERS
@@ -1034,6 +1246,7 @@ function saveProf(){
 }
 
 function doLogout(){
+  document.body.classList.remove('adm-layout');
   Auth.logout();
   St.resetCo();
   closeSB();
@@ -1058,8 +1271,9 @@ function updTx(txId,newSt){
 
 function admWA(txId){
   const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
-  const wa=tx.userWA;if(!wa){toast('User tidak memiliki nomor WA','warning');return}
-  const msg=`Halo ${tx.userName}!\n\nPesanan kamu di *Seloss Store* sudah kami terima:\n${tx.productName} (${tx.variantName})\nTotal: ${fmt(tx.amount)}\n\nSegera diproses ya! Terima kasih sudah berbelanja di Seloss Store.`;
+  const raw=tx.userWA;if(!raw){toast('Nomor WhatsApp pelanggan tidak tersedia','warning');return;}
+  const wa=nWA(raw);
+  const msg=`Halo ${tx.userName||'Kak'}!\n\nUpdate pesanan kamu di *Seloss Store*:\n📦 ${tx.productName} (${tx.variantName})\n💰 Total: ${fmt(tx.amount)}\n📋 Status: ${tx.status}\n\nAda yang bisa kami bantu? Terima kasih!`;
   window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
@@ -1085,6 +1299,7 @@ const R = {
     const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'profile', 'admin'];
 
     if (AUTH_PAGES.includes(page)) {
+      document.body.classList.remove('adm-layout');
       // Show auth section
       if (authEl) authEl.style.display = 'flex';
       if (appEl)  appEl.style.display  = 'none';
@@ -1092,6 +1307,7 @@ const R = {
     } else if (APP_PAGES.includes(page)) {
       // Guard: must be logged in
       if (!Auth.check()) {
+        document.body.classList.remove('adm-layout');
         if (authEl) authEl.style.display = 'flex';
         if (appEl)  appEl.style.display  = 'none';
         Pages.auth('login');
@@ -1099,6 +1315,7 @@ const R = {
       }
       if (authEl) authEl.style.display = 'none';
       if (appEl)  appEl.style.display  = 'flex';
+      document.body.classList.toggle('adm-layout', page === 'admin');
       updNav();
       Pages.app(page, params);
     }
@@ -1278,7 +1495,360 @@ function initApp() {
   window.trigUpload        = trigUpload;
   window.handleFile        = handleFile;
   window.procFile          = procFile;
+// ── ADMIN NAVIGATION ─────────────────────────────────────────
+function goAdmSub(sub){
+  window._admSub = sub;
+  if(!Auth.isAdm()){toast('Akses ditolak','error');R.go('home');return;}
+  R.go('admin');
+  closeSB();
+}
+
+// ── ADMIN DASHBOARD CHART ─────────────────────────────────────
+function admChartClick(idx){
+  document.querySelectorAll('.adm-bar-col').forEach((el,i)=>{
+    el.classList.toggle('active', i===idx);
+  });
+  const col = document.getElementById(`adm-bc-${idx}`);
+  const det = $('adm-chart-detail');
+  if(!col||!det) return;
+  const bar = col.querySelector('.adm-bar');
+  const rev = Number(bar?.style.height || 0);
+  const btt = col.querySelector('.adm-bar-tooltip');
+  const lbl = col.querySelector('.adm-bar-lbl')?.textContent || '';
+  const revVal = bar?.parentElement?.previousElementSibling?.querySelector('span')?.textContent || '';
+  // Read from data stored in tooltip
+  const tt = document.getElementById(`adm-btt-${idx}`);
+  if(!tt||!det) return;
+  const strong = tt.querySelector('strong')?.textContent||lbl;
+  const span = tt.querySelector('span')?.textContent||'Rp 0';
+  const small = tt.querySelector('small')?.textContent||'0 item';
+  det.style.display='block';
+  det.innerHTML=`<div class="adm-chart-det-box"><i class="bi bi-calendar3"></i> <strong>${strong}</strong> — Pendapatan: <strong>${span}</strong> &nbsp;•&nbsp; ${small}</div>`;
+}
+
+// ── ADMIN PRODUCT HANDLERS ────────────────────────────────────
+function admProdSearch(q){
+  window._admProdQ = q;
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admProdFilter(f){
+  window._admProdFilter = f;
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admProdToggle(id){
+  const prods=DB.prods();
+  const p=prods.find(p=>p.id===id);
+  if(!p)return;
+  p.available = p.available === false ? true : false;
+  DB.setProds(prods);
+  toast(`Produk "${p.name}" ${p.available?'diaktifkan':'dinonaktifkan'}`,'success');
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admProdDel(id){
+  const p=DB.prods().find(p=>p.id===id);
+  if(!p)return;
+  const modal=$('adm-del-modal');
+  const inner=$('adm-del-modal-inner');
+  if(!modal||!inner)return;
+  inner.innerHTML=`
+    <div class="adm-modal-hdr"><span class="adm-modal-title"><i class="bi bi-trash"></i> Hapus Produk</span><button class="adm-modal-close" onclick="admCloseDelModal()">×</button></div>
+    <div style="padding:20px">
+      <p style="color:var(--dk3);margin-bottom:12px">Anda akan menghapus produk <strong>${esc(p.name)}</strong>.</p>
+      <div class="adm-info-box"><i class="bi bi-info-circle"></i> Riwayat pesanan yang menggunakan produk ini tidak akan terhapus.</div>
+      <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+        <button class="adm-btn-sec" onclick="admCloseDelModal()">Batal</button>
+        <button class="adm-btn-danger" onclick="admProdDelConfirm('${id}')"><i class="bi bi-trash"></i> Hapus</button>
+      </div>
+    </div>`;
+  modal.style.display='flex';
+}
+
+function admProdDelConfirm(id){
+  const p=DB.prods().find(p=>p.id===id);
+  if(!p)return;
+  DB.delProd(id);
+  toast(`Produk "${p.name}" berhasil dihapus`,'success');
+  admCloseDelModal();
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admCloseDelModal(){const m=$('adm-del-modal');if(m)m.style.display='none';}
+function admCloseProdModal(){const m=$('adm-prod-modal');if(m)m.style.display='none';}
+function admCloseOrdModal(){const m=$('adm-ord-modal');if(m)m.style.display='none';}
+function admCloseConfirmModal(){const m=$('adm-confirm-modal');if(m)m.style.display='none';}
+
+function admProdNew(){
+  const modal=$('adm-prod-modal');
+  const inner=$('adm-prod-modal-inner');
+  if(!modal||!inner)return;
+  inner.innerHTML=admProdFormHtml(null);
+  modal.style.display='flex';
+}
+
+function admProdEdit(id){
+  const p=DB.prods().find(p=>p.id===id);
+  if(!p)return;
+  const modal=$('adm-prod-modal');
+  const inner=$('adm-prod-modal-inner');
+  if(!modal||!inner)return;
+  inner.innerHTML=admProdFormHtml(p);
+  modal.style.display='flex';
+}
+
+function admProdFormHtml(p){
+  const isNew=!p;
+  const vars = p?.vars||[{id:'var_'+Date.now(),n:'',p:0}];
+  return `
+    <div class="adm-modal-hdr">
+      <span class="adm-modal-title"><i class="bi bi-${isNew?'plus-lg':'pencil'}"></i> ${isNew?'Tambah':'Edit'} Produk</span>
+      <button class="adm-modal-close" onclick="admCloseProdModal()">×</button>
+    </div>
+    <div class="adm-modal-body">
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Nama Produk <span style="color:var(--ac)">*</span></label>
+        <input class="adm-form-inp" id="apf-name" type="text" value="${esc(p?.name||'')}" placeholder="Contoh: Netflix Premium">
+        <div class="adm-form-err" id="apf-name-err">Nama tidak boleh kosong</div>
+      </div>
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Deskripsi</label>
+        <textarea class="adm-form-inp" id="apf-desc" rows="3" placeholder="Deskripsi singkat produk">${esc(p?.desc||'')}</textarea>
+      </div>
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">URL Gambar (opsional)</label>
+        <input class="adm-form-inp" id="apf-image" type="text" value="${esc(p?.image||'')}" placeholder="assett/nama-logo.png">
+      </div>
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Kategori (pisah koma)</label>
+        <input class="adm-form-inp" id="apf-cat" type="text" value="${esc(Array.isArray(p?.cat)?p.cat.join(','):p?.cat||'semuaan')}" placeholder="semuaan,larisann">
+      </div>
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Status Ketersediaan</label>
+        <select class="adm-form-inp" id="apf-avail">
+          <option value="true" ${p?.available!==false?'selected':''}>Tersedia</option>
+          <option value="false" ${p?.available===false?'selected':''}>Tidak Tersedia</option>
+        </select>
+      </div>
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Paket / Varian <span style="color:var(--ac)">*</span></label>
+        <div id="apf-vars">
+          ${vars.map((v,i)=>`
+            <div class="apf-var-row" id="apf-var-${i}" data-idx="${i}">
+              <input class="adm-form-inp apf-var-name" type="text" placeholder="Nama paket (cth: 1 Bulan)" value="${esc(v.n)}" style="flex:2">
+              <input class="adm-form-inp apf-var-price" type="number" min="0" placeholder="Harga (Rp)" value="${v.p||''}" style="flex:1">
+              <button type="button" class="adm-abtn ab-del" onclick="apfRemVar(${i})" style="flex-shrink:0;padding:8px 10px"><i class="bi bi-trash"></i></button>
+            </div>`).join('')}
+        </div>
+        <button type="button" class="adm-btn-sec" onclick="apfAddVar()" style="margin-top:8px;font-size:.8rem"><i class="bi bi-plus-lg"></i> Tambah Varian</button>
+        <div class="adm-form-err" id="apf-vars-err">Minimal satu varian dengan nama dan harga valid</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--gy4);margin-top:4px">
+        <button class="adm-btn-sec" onclick="admCloseProdModal()">Batal</button>
+        <button class="adm-btn-primary" onclick="admProdSave('${p?.id||''}')"><i class="bi bi-save"></i> Simpan</button>
+      </div>
+    </div>`;
+}
+
+function apfAddVar(){
+  const cont=$('apf-vars');if(!cont)return;
+  const rows=cont.querySelectorAll('.apf-var-row');
+  const i=rows.length;
+  const div=document.createElement('div');
+  div.className='apf-var-row';div.id=`apf-var-${i}`;div.dataset.idx=i;
+  div.innerHTML=`<input class="adm-form-inp apf-var-name" type="text" placeholder="Nama paket" style="flex:2"><input class="adm-form-inp apf-var-price" type="number" min="0" placeholder="Harga (Rp)" style="flex:1"><button type="button" class="adm-abtn ab-del" onclick="apfRemVar(${i})" style="flex-shrink:0;padding:8px 10px"><i class="bi bi-trash"></i></button>`;
+  cont.appendChild(div);
+}
+
+function apfRemVar(idx){
+  const row=document.querySelector(`[data-idx="${idx}"]`);
+  if(row)row.remove();
+}
+
+function admProdSave(existingId){
+  const name=$('apf-name')?.value.trim();
+  const desc=$('apf-desc')?.value.trim()||'';
+  const image=$('apf-image')?.value.trim()||'';
+  const catRaw=$('apf-cat')?.value.trim()||'semuaan';
+  const available=$('apf-avail')?.value==='true';
+  const cat=catRaw.split(',').map(c=>c.trim()).filter(Boolean);
+
+  // Validate name
+  const nameErr=$('apf-name-err');
+  if(!name){if(nameErr)nameErr.style.display='block';return;}
+  if(nameErr)nameErr.style.display='none';
+
+  // Collect vars
+  const varRows=document.querySelectorAll('#apf-vars .apf-var-row');
+  const vars=[];
+  varRows.forEach((row,i)=>{
+    const n=row.querySelector('.apf-var-name')?.value.trim();
+    const p=Number(row.querySelector('.apf-var-price')?.value)||0;
+    if(n&&p>=0){
+      const existProd=existingId?DB.prods().find(p=>p.id===existingId):null;
+      const existVar=existProd?.vars[i];
+      vars.push({id:existVar?.id||gid('var'),n,p});
+    }
+  });
+
+  const varsErr=$('apf-vars-err');
+  if(vars.length===0){if(varsErr)varsErr.style.display='block';return;}
+  if(varsErr)varsErr.style.display='none';
+
+  const prods=DB.prods();
+  if(existingId){
+    // Edit
+    const idx=prods.findIndex(p=>p.id===existingId);
+    if(idx<0){toast('Produk tidak ditemukan','error');return;}
+    prods[idx]={...prods[idx],name,desc,image,cat,available,vars,updatedAt:new Date().toISOString()};
+    DB.setProds(prods);
+    toast(`Produk "${name}" berhasil diperbarui`,'success');
+  } else {
+    // New
+    const id=gid('prod').replace('prod_','').slice(0,12);
+    const newProd={id,name,desc,image,cat,available,vars,createdAt:new Date().toISOString()};
+    prods.push(newProd);
+    DB.setProds(prods);
+    toast(`Produk "${name}" berhasil ditambahkan`,'success');
+  }
+
+  admCloseProdModal();
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+// ── ADMIN ORDER HANDLERS ──────────────────────────────────────
+function admOrdSearch(q){
+  window._admOrdQ=q;
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admOrdFilter(f){
+  window._admOrdFilter=f;
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admOrdDetail(txId){
+  const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
+  const modal=$('adm-ord-modal');
+  const inner=$('adm-ord-modal-inner');
+  if(!modal||!inner)return;
+  const pm=PMETHODS.find(m=>m.id===tx.paymentMethod);
+  const wa=tx.userWA&&nWA(tx.userWA);
+  const waValid=wa&&vWA(tx.userWA);
+  const waMsg=`Halo ${tx.userName||'Kak'}!\n\nUpdate pesanan kamu di *Seloss Store*:\n📦 ${tx.productName} (${tx.variantName})\n💰 Total: ${fmt(tx.amount)}\n📋 Status: ${tx.status}\n\nAda yang bisa kami bantu?`;
+  const waLink=waValid?`https://wa.me/${wa}?text=${encodeURIComponent(waMsg)}`:null;
+
+  // Valid status transitions
+  const canConfirm = tx.status==='pending';
+  const canProcess = tx.status==='confirmed';
+  const canDone    = tx.status==='processing'||tx.status==='confirmed';
+  const canCancel  = !['done','cancelled'].includes(tx.status);
+
+  inner.innerHTML=`
+    <div class="adm-modal-hdr">
+      <span class="adm-modal-title"><i class="bi bi-receipt"></i> Detail Pesanan</span>
+      <button class="adm-modal-close" onclick="admCloseOrdModal()">×</button>
+    </div>
+    <div class="adm-modal-body" style="max-height:75vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--gy4)">
+        ${tx.productIcon?`<img src="${esc(tx.productIcon)}" style="width:56px;height:56px;border-radius:12px;object-fit:cover">`:`<span style="width:56px;height:56px;border-radius:12px;background:var(--pr-l);color:var(--pr-d);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800">${esc((tx.productName||'?').charAt(0))}</span>`}
+        <div>
+          <div style="font-weight:700;font-size:1rem">${esc(tx.productName)}</div>
+          <div style="font-size:.8rem;color:var(--gy)">${esc(tx.variantName)}</div>
+          <div style="margin-top:6px">${sbdg(tx.status)}</div>
+        </div>
+      </div>
+      <div class="adm-detail-grid">
+        ${[
+          ['ID Pesanan',`<code style="font-size:.72rem">${tx.id}</code>`],
+          ['Pembeli',esc(tx.userName||'-')],
+          ['WhatsApp',esc(tx.userWA||'-')],
+          ['Email',esc(tx.userEmail||'-')],
+          ['Tanggal',fdt(tx.createdAt)],
+          ['Diperbarui',fdt(tx.updatedAt||tx.createdAt)],
+          ['Metode Bayar',esc(pm?.name||tx.paymentMethod||'-')],
+          ['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],
+        ].map(([k,v])=>`<div class="adm-det-row"><span>${k}</span><span>${v}</span></div>`).join('')}
+      </div>
+      ${waValid?`<a href="${waLink}" target="_blank" class="adm-btn-wa"><i class="bi bi-whatsapp"></i> Hubungi via WhatsApp</a>`:`<div class="adm-info-box" style="margin-top:14px"><i class="bi bi-exclamation-triangle"></i> Nomor WhatsApp tidak tersedia atau tidak valid</div>`}
+      ${canConfirm||canDone||canCancel?`
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--gy4)">
+        ${canConfirm?`<button class="adm-btn-ok" onclick="admOrdUpdate('${tx.id}','confirmed')"><i class="bi bi-check-circle"></i> Konfirmasi</button>`:''}
+        ${canProcess?`<button class="adm-btn-ok" onclick="admOrdUpdate('${tx.id}','processing')"><i class="bi bi-arrow-repeat"></i> Proses</button>`:''}
+        ${canDone?`<button class="adm-btn-ok" onclick="admOrdUpdate('${tx.id}','done')"><i class="bi bi-check-all"></i> Selesaikan</button>`:''}
+        ${canCancel?`<button class="adm-btn-danger" onclick="admOrdCancelConfirm('${tx.id}')"><i class="bi bi-x-lg"></i> Batalkan</button>`:''}
+      </div>`:''}
+    </div>`;
+  modal.style.display='flex';
+}
+
+function admOrdUpdate(txId, newSt){
+  const txs=DB.txs(),tx=txs.find(t=>t.id===txId);if(!tx)return;
+  // Validate transition
+  const allowed = {
+    pending:['confirmed','cancelled'],
+    confirmed:['processing','done','cancelled'],
+    processing:['done','cancelled'],
+    done:[],
+    cancelled:[]
+  };
+  if(!allowed[tx.status]?.includes(newSt)){toast('Transisi status tidak valid','error');return;}
+  tx.status=newSt;tx.updatedAt=new Date().toISOString();DB.upsertTx(tx);
+  const lbl={confirmed:'dikonfirmasi',processing:'diproses',done:'diselesaikan',cancelled:'dibatalkan'};
+  toast(`Pesanan berhasil ${lbl[newSt]||newSt}`,'success');
+  admCloseOrdModal();admCloseConfirmModal();
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
+function admOrdCancelConfirm(txId){
+  const confirmModal=$('adm-confirm-modal');
+  const confirmInner=$('adm-confirm-modal-inner');
+  if(!confirmModal||!confirmInner)return;
+  confirmInner.innerHTML=`
+    <div class="adm-modal-hdr"><span class="adm-modal-title"><i class="bi bi-exclamation-triangle"></i> Batalkan Pesanan</span><button class="adm-modal-close" onclick="admCloseConfirmModal()">×</button></div>
+    <div style="padding:20px">
+      <p style="color:var(--dk3);margin-bottom:12px">Apakah Anda yakin ingin membatalkan pesanan ini?</p>
+      <div class="adm-info-box"><i class="bi bi-info-circle"></i> Pembatalan tidak otomatis melakukan refund. Hubungi pelanggan jika diperlukan.</div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+        <button class="adm-btn-sec" onclick="admCloseConfirmModal()">Kembali</button>
+        <button class="adm-btn-danger" onclick="admOrdUpdate('${txId}','cancelled')"><i class="bi bi-x-lg"></i> Batalkan Pesanan</button>
+      </div>
+    </div>`;
+  admCloseOrdModal();
+  confirmModal.style.display='flex';
+}
+
   window.copyT             = copyT;
+  window.goAdmSub          = goAdmSub;
+  window.admChartClick     = admChartClick;
+  window.admProdSearch     = admProdSearch;
+  window.admProdFilter     = admProdFilter;
+  window.admProdToggle     = admProdToggle;
+  window.admProdDel        = admProdDel;
+  window.admProdDelConfirm = admProdDelConfirm;
+  window.admCloseDelModal  = admCloseDelModal;
+  window.admCloseProdModal = admCloseProdModal;
+  window.admCloseOrdModal  = admCloseOrdModal;
+  window.admCloseConfirmModal = admCloseConfirmModal;
+  window.admProdNew        = admProdNew;
+  window.admProdEdit       = admProdEdit;
+  window.admProdSave       = admProdSave;
+  window.apfAddVar         = apfAddVar;
+  window.apfRemVar         = apfRemVar;
+  window.admOrdSearch      = admOrdSearch;
+  window.admOrdFilter      = admOrdFilter;
+  window.admOrdDetail      = admOrdDetail;
+  window.admOrdUpdate      = admOrdUpdate;
+  window.admOrdCancelConfirm = admOrdCancelConfirm;
 
   // Hide loading screen & navigate to home
   setTimeout(() => {

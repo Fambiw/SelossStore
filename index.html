@@ -56,7 +56,10 @@
     </button>
     <div class="sb-content">
       <div class="sb-admin-group" id="sb-admin-group" style="display:none">
-        <button class="sb-item" id="sbi-adm" onclick="R.go('admin')"><i class="bi bi-grid-1x2 si" aria-hidden="true"></i><span>Dashboard</span></button>
+        <div class="sb-label">ADMIN</div>
+        <button class="sb-item" id="sbi-adm-dashboard" onclick="goAdmSub('dashboard')"><i class="bi bi-speedometer2 si" aria-hidden="true"></i><span>Dashboard</span></button>
+        <button class="sb-item" id="sbi-adm-products" onclick="goAdmSub('products')"><i class="bi bi-box-seam si" aria-hidden="true"></i><span>Edit Produk</span></button>
+        <button class="sb-item" id="sbi-adm-orders" onclick="goAdmSub('orders')"><i class="bi bi-receipt si" aria-hidden="true"></i><span>Pesanan</span></button>
       </div>
       <div class="sb-label">MAIN MENU</div>
       <button class="sb-item" id="sbi-home" onclick="R.go('home')"><i class="bi bi-house si" aria-hidden="true"></i><span>Beranda</span></button>

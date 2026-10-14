@@ -38,13 +38,20 @@ export const DB = {
   setSes(s) { this.s('sl_ses', s); },
   clrSes() { this.d('sl_ses'); },
   
-  prods() { 
-    // Always seed from sample data to ensure freshness
+  prods() {
+    // Read from localStorage first; seed from sample data only on first run
+    const stored = this.g('sl_prods', null);
+    if (stored && Array.isArray(stored) && stored.length > 0) return stored;
     const p = sampleProds();
     this.s('sl_prods', p);
     return p;
   },
   setProds(p) { this.s('sl_prods', p); },
+  delProd(id) {
+    const ps = this.prods().filter(p => p.id !== id);
+    this.s('sl_prods', ps);
+    return ps;
+  },
   
   txs() { return this.g('sl_txs', []); },
   upsertTx(tx) {

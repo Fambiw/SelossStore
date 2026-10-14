@@ -59,4 +59,30 @@ describe('DB - LocalStorage Wrapper', () => {
       expect(txs[0].id).toBe('tx_2'); // tx2 should be at index 0
     });
   });
+
+  describe('Product Operations', () => {
+    it('should seed default products if none exist', () => {
+      const prods = DB.prods();
+      expect(Array.isArray(prods)).toBe(true);
+      expect(prods.length).toBeGreaterThan(0);
+    });
+
+    it('should update and persist products via setProds', () => {
+      const customProds = [{ id: 'p_custom', name: 'Custom Product', vars: [{ id: 'v1', n: '1 Bulan', p: 15000 }] }];
+      DB.setProds(customProds);
+      expect(DB.prods()).toEqual(customProds);
+    });
+
+    it('should delete product by id via delProd', () => {
+      const testProds = [
+        { id: 'p_1', name: 'Product 1', vars: [] },
+        { id: 'p_2', name: 'Product 2', vars: [] }
+      ];
+      DB.setProds(testProds);
+      const remaining = DB.delProd('p_1');
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].id).toBe('p_2');
+      expect(DB.prods().find(p => p.id === 'p_1')).toBeUndefined();
+    });
+  });
 });
