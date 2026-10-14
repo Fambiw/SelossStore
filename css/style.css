@@ -643,6 +643,12 @@
   .adm-bnr-meta { font-size: .75rem; color: var(--gy); display: flex; gap: 12px; }
   .adm-upload-zone { border: 2px dashed var(--gy3); border-radius: var(--r2); padding: 24px; text-align: center; cursor: pointer; transition: var(--tr); background: var(--gy5); }
   .adm-upload-zone:hover, .adm-upload-zone.dragover { border-color: var(--pr); background: var(--pr-l); }
+   .adm-sample-label { margin: 12px 0 6px; color: var(--gy); font-size: .76rem; font-weight: 600; }
+   .adm-samples-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+   .adm-sample-btn { min-width: 0; padding: 7px; border: 1px solid var(--gy4); border-radius: var(--r1); background: var(--wh); color: var(--dk3); text-align: left; cursor: pointer; transition: var(--tr); }
+   .adm-sample-btn:hover, .adm-sample-btn:focus-visible { border-color: var(--pr); background: var(--pr-l); }
+   .adm-sample-btn img { display: block; width: 100%; aspect-ratio: 3/1; border-radius: 5px; background: #0b1120; object-fit: contain; }
+   .adm-sample-btn span { display: block; margin-top: 5px; font-size: .72rem; font-weight: 600; }
   .adm-preview-wrap { position: relative; width: 100%; aspect-ratio: 3/1; border-radius: var(--r2); overflow: hidden; background: #0b1120; margin-top: 10px; border: 1px solid var(--gy4); }
   .adm-preview-wrap img { width: 100%; height: 100%; object-fit: contain; }
   .adm-ratio-notice { font-size: .74rem; color: var(--gy); margin-top: 6px; line-height: 1.4; }

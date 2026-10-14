@@ -3,7 +3,7 @@
 
 import { CFG, PMETHODS, STLBLS } from './config.js';
 import { hs, gid, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
-import { sampleProds, sampleUsers } from './sample-data.js';
+import { sampleProds, sampleBanners, sampleUsers } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
@@ -1959,9 +1959,18 @@ function admBannerNew(){
         <div class="adm-upload-zone" id="abf-dropzone" onclick="$('abf-file').click()">
           <i class="bi bi-cloud-arrow-up" style="font-size:2rem;color:var(--pr);display:block;margin-bottom:6px"></i>
           <span style="font-size:.85rem;font-weight:600;color:var(--dk)">Klik untuk pilih gambar atau seret file ke sini</span>
-          <div style="font-size:.73rem;color:var(--gy);margin-top:4px">Format: PNG, JPG, JPEG, WebP (Maks. 3MB)</div>
+          <div style="font-size:.73rem;color:var(--gy);margin-top:4px">Format: PNG, JPG, JPEG, WebP (Maks. 10MB; gambar dikompres otomatis)</div>
         </div>
         <input type="file" id="abf-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="admBnrFileSelected(this)">
+        <div class="adm-sample-label">Atau pilih gambar contoh</div>
+        <div class="adm-samples-grid">
+          ${sampleBanners().map((banner, index) => `
+            <button type="button" class="adm-sample-btn" onclick="admBnrUseSample('${banner.id}')">
+              <img src="${esc(banner.image)}" alt="${esc(banner.title)}">
+              <span>Contoh ${index + 1}</span>
+            </button>
+          `).join('')}
+        </div>
         <div class="adm-ratio-notice">
           <strong>Rekomendasi Standar:</strong> 1440 × 480 piksel (Rasio Aspek <strong>3:1</strong>).<br>
           <em>Tips:</em> Letakkan konten penting di tengah dan hindari teks terlalu dekat dengan tepi.
@@ -2004,6 +2013,25 @@ function admBnrFileSelected(input){
   if(f) admBnrProcessFile(f);
 }
 
+function admBnrUseSample(id){
+  if(!Auth.isAdm()){ toast('Akses ditolak','error'); return; }
+  const banner = sampleBanners().find(item => item.id === id);
+  if(!banner)return;
+  window._admBnrImgData = banner.image;
+  const titleInput = $('abf-title');
+  if(titleInput&&!titleInput.value.trim())titleInput.value = banner.title;
+  const preview = $('abf-preview-container');
+  const previewImg = $('abf-preview-img');
+  if(preview&&previewImg){
+    previewImg.src = banner.image;
+    preview.style.display = 'block';
+  }
+  const fileError = $('abf-file-err');
+  if(fileError)fileError.style.display = 'none';
+  const ratioWarning = $('abf-ratio-warn');
+  if(ratioWarning)ratioWarning.style.display = 'none';
+}
+
 function admBnrProcessFile(file){
   const err = $('abf-file-err');
   const warn = $('abf-ratio-warn');
@@ -2018,9 +2046,9 @@ function admBnrProcessFile(file){
     if(err){ err.textContent = 'Format file tidak valid. Gunakan PNG, JPG, JPEG, atau WebP.'; err.style.display = 'block'; }
     return;
   }
-  // Validate size (max 3MB)
-  if(file.size > 3 * 1024 * 1024){
-    if(err){ err.textContent = 'Ukuran gambar terlalu besar (maksimal 3MB).'; err.style.display = 'block'; }
+  // Validate size (max 10MB before browser-side compression)
+  if(file.size > 10 * 1024 * 1024){
+    if(err){ err.textContent = 'Ukuran gambar terlalu besar (maksimal 10MB).'; err.style.display = 'block'; }
     return;
   }
 
@@ -2032,16 +2060,40 @@ function admBnrProcessFile(file){
     const dataUrl = e.target.result;
     const img = new Image();
     img.onload = function(){
-      const ratio = img.width / img.height;
+      const sourceWidth = img.naturalWidth || img.width;
+      const sourceHeight = img.naturalHeight || img.height;
+      const ratio = sourceWidth / sourceHeight;
       if(warn){
         // Ideal ratio is around 3.0 (between 2.6 and 3.4)
         warn.style.display = (ratio < 2.5 || ratio > 3.5) ? 'block' : 'none';
       }
-      window._admBnrImgData = dataUrl;
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if(!context){
+        if(err){ err.textContent = 'Browser tidak dapat memproses gambar ini.'; err.style.display = 'block'; }
+        return;
+      }
+      let outputWidth = Math.min(sourceWidth, 1920);
+      let quality = 0.86;
+      let compressedData = '';
+      for(let attempt = 0; attempt < 10; attempt++){
+        canvas.width = outputWidth;
+        canvas.height = Math.max(1, Math.round(sourceHeight * outputWidth / sourceWidth));
+        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+        compressedData = canvas.toDataURL('image/webp', quality);
+        if(compressedData.length <= 450000)break;
+        if(quality > 0.62)quality -= 0.08;
+        else { outputWidth = Math.max(320, Math.round(outputWidth * 0.82)); quality = 0.78; }
+      }
+      if(compressedData.length > 450000){
+        if(err){ err.textContent = 'Gambar masih terlalu besar setelah dikompres. Coba file dengan dimensi lebih kecil.'; err.style.display = 'block'; }
+        return;
+      }
+      window._admBnrImgData = compressedData;
       const prevCont = $('abf-preview-container');
       const prevImg = $('abf-preview-img');
       if(prevCont && prevImg){
-        prevImg.src = dataUrl;
+        prevImg.src = compressedData;
         prevCont.style.display = 'block';
       }
     };
@@ -2166,6 +2218,7 @@ function admBannerDelConfirm(id){
   window.admCloseBnrDelModal = admCloseBnrDelModal;
   window.admBannerNew        = admBannerNew;
   window.admBnrFileSelected  = admBnrFileSelected;
+  window.admBnrUseSample     = admBnrUseSample;
   window.admBannerSave       = admBannerSave;
   window.admBannerDel        = admBannerDel;
   window.admBannerDelConfirm = admBannerDelConfirm;
