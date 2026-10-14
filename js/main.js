@@ -269,7 +269,7 @@ const Pages={
 
   // HOME
   home(){
-    const prods=DB.prods(),banners=DB.banners();
+    const prods=DB.prods(),banners=DB.banners().filter(b=>b&&typeof b.image==='string'&&b.image.trim());
     let cat=St.cat,q=St.q.toLowerCase();
     const cats=[
       {id:'semuaan',lbl:'Semuaan'},
@@ -283,15 +283,15 @@ const Pages={
     if(q)filtered=filtered.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
     return`
     ${banners && banners.length > 0 ? `
-    <div class="bsl${banners.length >= 3 ? ' has-peek' : ''}" id="home-bsl">
+    <div class="bsl" id="home-bsl">
       <div class="bsl-viewport">
         <div class="bsl-trk" id="bsl-trk"></div>
+        ${banners.length > 1 ? `
+        <button class="bsl-nav bsl-prev" onclick="prevBanner()" aria-label="Banner Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+        <button class="bsl-nav bsl-next" onclick="nextBanner()" aria-label="Banner Berikutnya"><i class="bi bi-chevron-right"></i></button>
+        ` : ''}
       </div>
       <div class="bsl-dots" id="bsl-dots"></div>
-      ${banners.length > 1 ? `
-      <button class="bsl-nav bsl-prev" onclick="prevBanner()" aria-label="Banner Sebelumnya"><i class="bi bi-chevron-left"></i></button>
-      <button class="bsl-nav bsl-next" onclick="nextBanner()" aria-label="Banner Berikutnya"><i class="bi bi-chevron-right"></i></button>
-      ` : ''}
     </div>` : ''}
     <div class="sh"><div class="sh-ttl"><i class="bi bi-grid" aria-hidden="true"></i>Kategori</div></div>
     <div class="cats">${cats.map(c=>`<button class="cat-tab${St.cat===c.id?' act':''}" onclick="filterCat('${c.id}')">${c.lbl}</button>`).join('')}</div>
@@ -1393,36 +1393,46 @@ window.addEventListener('pageshow', (event) => {
 // ============================================================
 let BslIdx = 0;
 let BslTimer = null;
+let BslBanners = [];
 
 function initBsl(banners) {
   if (BslTimer) { clearInterval(BslTimer); BslTimer = null; }
   const trk = $('bsl-trk');
   const dots = $('bsl-dots');
   const bslBox = $('home-bsl');
-  if (!trk || !banners || !banners.length) return;
+  if (!trk) {
+    BslBanners = [];
+    BslIdx = 0;
+    return;
+  }
 
-  BslIdx = 0;
+  const activeId = BslBanners[BslIdx]?.id;
+  BslBanners = Array.isArray(banners) ? banners.filter(b => b && typeof b.image === 'string' && b.image.trim()) : [];
+  if (!BslBanners.length) {
+    BslIdx = 0;
+    trk.innerHTML = '';
+    if (dots) dots.innerHTML = '';
+    return;
+  }
 
-  trk.innerHTML = banners.map((b, i) =>
-    `<div class="bsl-sl${i === 0 ? ' is-active' : ''}" id="bsl-sl-${i}" style="${b.bg ? `background:${b.bg}` : 'background:#0b1120'}">
+  const activeIndex = BslBanners.findIndex(b => b.id === activeId);
+  BslIdx = activeIndex >= 0 ? activeIndex : Math.min(BslIdx, BslBanners.length - 1);
+
+  trk.innerHTML = BslBanners.map((b, i) =>
+    `<div class="bsl-sl${i === 0 ? ' is-active' : ''}" id="bsl-sl-${i}">
       ${b.image ? `<img src="${esc(b.image)}" alt="Banner Promosi" class="bsl-img">` : ''}
     </div>`
   ).join('');
 
   if (dots) {
-    if (banners.length <= 1) {
-      dots.innerHTML = '';
-    } else {
-      dots.innerHTML = banners.map((_, i) =>
-        `<div class="bsl-dot${i===0?' act':''}" onclick="goSl(${i})" aria-label="Slide ${i+1}"></div>`
-      ).join('');
-    }
+    dots.innerHTML = BslBanners.length <= 1 ? '' : BslBanners.map((_, i) =>
+      `<button type="button" class="bsl-dot${i===BslIdx?' act':''}" onclick="goSl(${i})" aria-label="Slide ${i+1}" aria-current="${i===BslIdx?'true':'false'}"></button>`
+    ).join('');
   }
 
-  goSl(0, false);
+  goSl(BslIdx, false);
 
-  // Setup autoplay if more than 1 banner
-  if (banners.length > 1) {
+  if (BslBanners.length > 1) {
     BslTimer = setInterval(() => {
       goSl(BslIdx + 1, true);
     }, 5000);
@@ -1449,34 +1459,38 @@ function initBsl(banners) {
 }
 
 function goSl(idx, isAuto = false) {
-  const banners = DB.banners();
-  if (!banners || !banners.length) return;
+  const count = BslBanners.length;
+  if (!count) return;
 
-  // Reset autoplay timer if manually triggered
-  if (!isAuto && BslTimer && banners.length > 1) {
+  if (!isAuto && BslTimer && count > 1) {
     clearInterval(BslTimer);
     BslTimer = setInterval(() => {
       goSl(BslIdx + 1, true);
     }, 5000);
   }
 
-  BslIdx = (idx + banners.length) % banners.length;
+  BslIdx = ((Math.trunc(idx) % count) + count) % count;
   const trk = $('bsl-trk');
   const dots = $('bsl-dots');
   if (trk) {
     const slides = trk.querySelectorAll('.bsl-sl');
-    slides.forEach((sl, i) => sl.classList.toggle('is-active', i === BslIdx));
-    const viewport = trk.parentElement;
-    const activeSlide = slides[BslIdx];
-    if (activeSlide && window.matchMedia('(min-width: 992px)').matches && $('home-bsl')?.classList.contains('has-peek')) {
-      const offset = (viewport.clientWidth - activeSlide.offsetWidth) / 2 - activeSlide.offsetLeft;
-      trk.style.transform = `translateX(${offset}px)`;
-    } else {
-      trk.style.transform = `translateX(-${BslIdx * 100}%)`;
-    }
+    slides.forEach((slide, i) => {
+      const active = i === BslIdx;
+      const previous = count >= 3 && i === (BslIdx + count - 1) % count;
+      const next = count > 1 && i === (BslIdx + 1) % count;
+      slide.classList.toggle('is-active', active);
+      slide.classList.toggle('is-prev', previous);
+      slide.classList.toggle('is-next', next);
+      slide.classList.toggle('is-hidden', !active && !previous && !next);
+      slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
   }
   if (dots) {
-    dots.querySelectorAll('.bsl-dot').forEach((d, i) => d.classList.toggle('act', i === BslIdx));
+    dots.querySelectorAll('.bsl-dot').forEach((dot, i) => {
+      const active = i === BslIdx;
+      dot.classList.toggle('act', active);
+      dot.setAttribute('aria-current', active ? 'true' : 'false');
+    });
   }
 }
 
