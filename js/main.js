@@ -3,7 +3,7 @@
 
 import { CFG, PMETHODS, STLBLS } from './config.js';
 import { hs, gid, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
-import { sampleProds, sampleBanners, sampleUsers } from './sample-data.js';
+import { sampleProds, sampleUsers } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
@@ -70,7 +70,7 @@ function updNav(){
   if(srch){
     if(pg==='admin'){
       const sub=window._admSub||'dashboard';
-      const ph={dashboard:'Dashboard — statistik penjualan',products:'Cari produk...',orders:'Cari pesanan, pembeli...'};
+      const ph={dashboard:'Dashboard — statistik penjualan',products:'Cari produk...',orders:'Cari pesanan, pembeli...',banners:'Kelola banner promosi...'};
       srch.placeholder=ph[sub]||'Cari...';
     } else {
       srch.placeholder='Cari produk...';
@@ -249,6 +249,7 @@ const Pages={
 
   // ── APP PAGES ────────────────────────────────────────────
   app(page,prms){
+    if(page!=='home'&&BslTimer){clearInterval(BslTimer);BslTimer=null;}
     const main=$('main');closeSB();
     if(page==='home')main.innerHTML=this.home();
     else if(page==='detail')main.innerHTML=this.detail(prms);
@@ -268,7 +269,7 @@ const Pages={
 
   // HOME
   home(){
-    const prods=DB.prods(),banners=sampleBanners();
+    const prods=DB.prods(),banners=DB.banners();
     let cat=St.cat,q=St.q.toLowerCase();
     const cats=[
       {id:'semuaan',lbl:'Semuaan'},
@@ -281,7 +282,17 @@ const Pages={
     if(cat!=='semuaan')filtered=filtered.filter(p=>Array.isArray(p.cat)?p.cat.includes(cat):p.cat===cat);
     if(q)filtered=filtered.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
     return`
-    <div class="bsl"><div class="bsl-trk" id="bsl-trk"></div><div class="bsl-dots" id="bsl-dots"></div><button class="bsl-nav bsl-prev" onclick="goSl((BslIdx-1+${banners.length})%${banners.length})"><i class="bi bi-chevron-left"></i></button><button class="bsl-nav bsl-next" onclick="goSl((BslIdx+1)%${banners.length})"><i class="bi bi-chevron-right"></i></button></div>
+    ${banners && banners.length > 0 ? `
+    <div class="bsl${banners.length >= 3 ? ' has-peek' : ''}" id="home-bsl">
+      <div class="bsl-viewport">
+        <div class="bsl-trk" id="bsl-trk"></div>
+      </div>
+      <div class="bsl-dots" id="bsl-dots"></div>
+      ${banners.length > 1 ? `
+      <button class="bsl-nav bsl-prev" onclick="prevBanner()" aria-label="Banner Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+      <button class="bsl-nav bsl-next" onclick="nextBanner()" aria-label="Banner Berikutnya"><i class="bi bi-chevron-right"></i></button>
+      ` : ''}
+    </div>` : ''}
     <div class="sh"><div class="sh-ttl"><i class="bi bi-grid" aria-hidden="true"></i>Kategori</div></div>
     <div class="cats">${cats.map(c=>`<button class="cat-tab${St.cat===c.id?' act':''}" onclick="filterCat('${c.id}')">${c.lbl}</button>`).join('')}</div>
     ${q?`<div style="margin-bottom:12px;font-size:.875rem;color:var(--gy)">Hasil pencarian "<strong>${esc(q)}</strong>" — ${filtered.length} produk <a href="#" style="color:var(--ac);font-size:.8rem;margin-left:6px" onclick="clearSrch();return false"><i class="bi bi-x-lg" aria-hidden="true"></i> Hapus</a></div>`:''}
@@ -292,7 +303,7 @@ const Pages={
 
 
   afterHome(){
-    initBsl(sampleBanners());
+    initBsl(DB.banners());
     // Render actual products after skeleton
     setTimeout(()=>{
       const pg=$('pgrid');if(!pg)return;
@@ -571,12 +582,13 @@ const Pages={
     </section>`;
   },
 
-  // ADMIN — 3-menu panel
+  // ADMIN — 4-menu panel
   admin(){
     if(!Auth.isAdm()){return''}
     const sub = window._admSub || 'dashboard';
     if(sub === 'products') return this.adminProducts();
     if(sub === 'orders')   return this.adminOrders();
+    if(sub === 'banners')  return this.adminBanners();
     return this.adminDashboard();
   },
 
@@ -781,6 +793,56 @@ const Pages={
     </div>
     <div class="adm-modal-ov" id="adm-ord-modal" style="display:none" onclick="if(event.target===this)admCloseOrdModal()"><div class="adm-modal" id="adm-ord-modal-inner"></div></div>
     <div class="adm-modal-ov" id="adm-confirm-modal" style="display:none" onclick="if(event.target===this)admCloseConfirmModal()"><div class="adm-modal adm-modal-sm" id="adm-confirm-modal-inner"></div></div>`;
+  },
+
+  // ── ADMIN EDIT BANNER ───────────────────────────────────────
+  adminBanners(){
+    const banners = DB.banners();
+    const maxReached = banners.length >= 5;
+
+    return `<div class="adm-page">
+      <div class="adm-page-hdr">
+        <div class="adm-page-hdr-left">
+          <button class="adm-mob-toggle" onclick="tglSB()" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+          <div>
+            <h1 class="adm-page-title"><i class="bi bi-images"></i> Edit Banner</h1>
+            <p style="margin:4px 0 0;font-size:.82rem;color:var(--gy)">Kelola banner iklan dan promosi yang tampil di halaman utama Seloss Store.</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${maxReached
+            ? `<span class="adm-badge-max"><i class="bi bi-info-circle"></i> Maksimal 5 banner tercapai</span>`
+            : `<button class="adm-btn-primary" onclick="admBannerNew()"><i class="bi bi-plus-lg"></i> Tambahkan Banner</button>`}
+        </div>
+      </div>
+
+      <div class="adm-card" style="padding:0;overflow:hidden">
+        ${banners.length === 0
+          ? `<div class="adm-empty"><i class="bi bi-images" style="font-size:2.5rem;color:var(--gy3)"></i><p>Belum ada banner aktif. Halaman utama saat ini tidak menampilkan carousel.</p></div>`
+          : `<div class="adm-tbl-scroll"><div class="adm-bnr-list">
+              ${banners.map((b, idx) => `
+                <div class="adm-bnr-card">
+                  <div class="adm-bnr-order" title="Urutan ke-${idx+1}">#${idx+1}</div>
+                  <div class="adm-bnr-thumb">
+                    ${b.image ? `<img src="${esc(b.image)}" alt="${esc(b.title||'Banner')}">` : `<div style="padding:10px;color:rgba(255,255,255,.5);font-size:.75rem">Tanpa Gambar</div>`}
+                  </div>
+                  <div class="adm-bnr-info">
+                    <div class="adm-bnr-name">${esc(b.title || 'Banner Promosi')}</div>
+                    <div class="adm-bnr-meta">
+                      <span><i class="bi bi-aspect-ratio"></i> Rasio 3:1</span>
+                      <span><i class="bi bi-calendar-event"></i> ${b.createdAt ? fdt(b.createdAt) : 'Aktif'}</span>
+                    </div>
+                  </div>
+                  <div class="adm-act-btns">
+                    <button class="adm-abtn ab-del" onclick="admBannerDel('${b.id}')" title="Hapus banner"><i class="bi bi-trash"></i> Hapus</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div></div>`}
+      </div>
+    </div>
+    <div class="adm-modal-ov" id="adm-bnr-modal" style="display:none" onclick="if(event.target===this)admCloseBnrModal()"><div class="adm-modal" id="adm-bnr-modal-inner"></div></div>
+    <div class="adm-modal-ov" id="adm-bnr-del-modal" style="display:none" onclick="if(event.target===this)admCloseBnrDelModal()"><div class="adm-modal adm-modal-sm" id="adm-bnr-del-modal-inner"></div></div>`;
   },
 
   admRows(txs){
@@ -1327,37 +1389,46 @@ window.addEventListener('pageshow', (event) => {
 });
 
 // ============================================================
-//  BANNER SLIDER (Manual Slide)
+//  BANNER SLIDER (Auto-play 5s & Center Focused)
 // ============================================================
 let BslIdx = 0;
+let BslTimer = null;
 
 function initBsl(banners) {
+  if (BslTimer) { clearInterval(BslTimer); BslTimer = null; }
   const trk = $('bsl-trk');
   const dots = $('bsl-dots');
-  if (!trk || !dots || !banners.length) return;
+  const bslBox = $('home-bsl');
+  if (!trk || !banners || !banners.length) return;
 
-  trk.innerHTML = banners.map((b) =>
-    `<div class="bsl-sl" ${b.prodId ? `onclick="openProd('${b.prodId}')"` : ''} style="${b.prodId ? 'cursor:pointer;' : ''}${b.bg ? `background:${b.bg}` : 'background:linear-gradient(135deg,#1e3a8a,#3730a3)'}">
-      ${b.image ? `<img src="${b.image}" alt="${esc(b.title || 'Banner')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit">` : ''}
-      ${b.title ? `
-        <div class="bsl-ov"></div>
-        <div class="bsl-cnt">
-          ${b.tag ? `<span class="bsl-tag">${esc(b.tag)}</span>` : ''}
-          <div class="bsl-ttl">${esc(b.title).replace(/\n/g, '<br>')}</div>
-          ${b.sub ? `<div class="bsl-sub">${esc(b.sub)}</div>` : ''}
-        </div>
-      ` : ''}
+  BslIdx = 0;
+
+  trk.innerHTML = banners.map((b, i) =>
+    `<div class="bsl-sl${i === 0 ? ' is-active' : ''}" id="bsl-sl-${i}" style="${b.bg ? `background:${b.bg}` : 'background:#0b1120'}">
+      ${b.image ? `<img src="${esc(b.image)}" alt="Banner Promosi" class="bsl-img">` : ''}
     </div>`
   ).join('');
 
-  dots.innerHTML = banners.map((_, i) =>
-    `<div class="bsl-dot${i===0?' act':''}" onclick="goSl(${i})"></div>`
-  ).join('');
+  if (dots) {
+    if (banners.length <= 1) {
+      dots.innerHTML = '';
+    } else {
+      dots.innerHTML = banners.map((_, i) =>
+        `<div class="bsl-dot${i===0?' act':''}" onclick="goSl(${i})" aria-label="Slide ${i+1}"></div>`
+      ).join('');
+    }
+  }
 
-  goSl(0);
+  goSl(0, false);
+
+  // Setup autoplay if more than 1 banner
+  if (banners.length > 1) {
+    BslTimer = setInterval(() => {
+      goSl(BslIdx + 1, true);
+    }, 5000);
+  }
 
   // Touch swipe support for mobile
-  const bslBox = document.querySelector('.bsl');
   if (bslBox && !bslBox.dataset.swipeBound) {
     bslBox.dataset.swipeBound = '1';
     let startX = 0;
@@ -1366,7 +1437,7 @@ function initBsl(banners) {
     }, { passive: true });
     bslBox.addEventListener('touchend', (e) => {
       const diffX = startX - e.changedTouches[0].clientX;
-      if (Math.abs(diffX) > 40) {
+      if (Math.abs(diffX) > 35) {
         if (diffX > 0) {
           goSl(BslIdx + 1);
         } else {
@@ -1377,15 +1448,40 @@ function initBsl(banners) {
   }
 }
 
-function goSl(idx) {
-  const banners = sampleBanners();
-  if (!banners.length) return;
+function goSl(idx, isAuto = false) {
+  const banners = DB.banners();
+  if (!banners || !banners.length) return;
+
+  // Reset autoplay timer if manually triggered
+  if (!isAuto && BslTimer && banners.length > 1) {
+    clearInterval(BslTimer);
+    BslTimer = setInterval(() => {
+      goSl(BslIdx + 1, true);
+    }, 5000);
+  }
+
   BslIdx = (idx + banners.length) % banners.length;
   const trk = $('bsl-trk');
   const dots = $('bsl-dots');
-  if (trk) trk.style.transform = `translateX(-${BslIdx * 100}%)`;
-  if (dots) dots.querySelectorAll('.bsl-dot').forEach((d, i) => d.classList.toggle('act', i === BslIdx));
+  if (trk) {
+    const slides = trk.querySelectorAll('.bsl-sl');
+    slides.forEach((sl, i) => sl.classList.toggle('is-active', i === BslIdx));
+    const viewport = trk.parentElement;
+    const activeSlide = slides[BslIdx];
+    if (activeSlide && window.matchMedia('(min-width: 992px)').matches && $('home-bsl')?.classList.contains('has-peek')) {
+      const offset = (viewport.clientWidth - activeSlide.offsetWidth) / 2 - activeSlide.offsetLeft;
+      trk.style.transform = `translateX(${offset}px)`;
+    } else {
+      trk.style.transform = `translateX(-${BslIdx * 100}%)`;
+    }
+  }
+  if (dots) {
+    dots.querySelectorAll('.bsl-dot').forEach((d, i) => d.classList.toggle('act', i === BslIdx));
+  }
 }
+
+function prevBanner(){goSl(BslIdx-1)}
+function nextBanner(){goSl(BslIdx+1)}
 
 // ============================================================
 //  COUNTDOWN TIMER
@@ -1460,6 +1556,8 @@ function initApp() {
   window.doSearch          = doSearch;
   window.clearSrch         = clearSrch;
   window.goSl              = goSl;
+  window.prevBanner        = prevBanner;
+  window.nextBanner        = nextBanner;
   window.filterCat         = filterCat;
   window.openProd          = openProd;
   window.openPriceModal    = openPriceModal;
@@ -1827,6 +1925,221 @@ function admOrdCancelConfirm(txId){
   confirmModal.style.display='flex';
 }
 
+// ── ADMIN BANNER HANDLERS ─────────────────────────────────────
+function admCloseBnrModal(){ const m=$('adm-bnr-modal'); if(m) m.style.display='none'; window._admBnrImgData = null; }
+function admCloseBnrDelModal(){ const m=$('adm-bnr-del-modal'); if(m) m.style.display='none'; }
+
+function admBannerNew(){
+  if(!Auth.isAdm()){ toast('Hanya admin yang dapat mengelola banner','error'); return; }
+  const banners = DB.banners();
+  if(banners.length >= 5){
+    toast('Maksimal 5 banner aktif sudah tercapai','warning');
+    return;
+  }
+  const modal = $('adm-bnr-modal');
+  const inner = $('adm-bnr-modal-inner');
+  if(!modal || !inner) return;
+
+  window._admBnrImgData = null;
+  inner.innerHTML = `
+    <div class="adm-modal-hdr">
+      <span class="adm-modal-title"><i class="bi bi-plus-lg"></i> Tambahkan Banner Baru</span>
+      <button class="adm-modal-close" onclick="admCloseBnrModal()">×</button>
+    </div>
+    <div class="adm-modal-body">
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Judul Banner (Internal) <span style="color:var(--ac)">*</span></label>
+        <input class="adm-form-inp" id="abf-title" type="text" placeholder="Contoh: Promo Canva Oktober, Promo Spesial Akhir Tahun">
+        <div class="adm-form-err" id="abf-title-err">Judul banner tidak boleh kosong</div>
+        <div style="font-size:.73rem;color:var(--gy);margin-top:4px"><i class="bi bi-info-circle"></i> Hanya digunakan di panel admin dan tidak ditampilkan di halaman utama.</div>
+      </div>
+
+      <div class="adm-form-row">
+        <label class="adm-form-lbl">Upload Gambar Banner <span style="color:var(--ac)">*</span></label>
+        <div class="adm-upload-zone" id="abf-dropzone" onclick="$('abf-file').click()">
+          <i class="bi bi-cloud-arrow-up" style="font-size:2rem;color:var(--pr);display:block;margin-bottom:6px"></i>
+          <span style="font-size:.85rem;font-weight:600;color:var(--dk)">Klik untuk pilih gambar atau seret file ke sini</span>
+          <div style="font-size:.73rem;color:var(--gy);margin-top:4px">Format: PNG, JPG, JPEG, WebP (Maks. 3MB)</div>
+        </div>
+        <input type="file" id="abf-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="admBnrFileSelected(this)">
+        <div class="adm-ratio-notice">
+          <strong>Rekomendasi Standar:</strong> 1440 × 480 piksel (Rasio Aspek <strong>3:1</strong>).<br>
+          <em>Tips:</em> Letakkan konten penting di tengah dan hindari teks terlalu dekat dengan tepi.
+        </div>
+        <div id="abf-ratio-warn" style="display:none;margin-top:6px;padding:8px 12px;background:#fef3c7;border:1px solid #fde68a;border-radius:var(--r1);font-size:.75rem;color:#92400e">
+          <i class="bi bi-exclamation-triangle"></i> Gambar yang dipilih memiliki rasio aspek berbeda dari rekomendasi 3:1. Gambar tetap akan ditampilkan utuh (proporsional).
+        </div>
+        <div class="adm-form-err" id="abf-file-err">Silakan pilih file gambar banner</div>
+
+        <div id="abf-preview-container" style="display:none;margin-top:10px">
+          <label class="adm-form-lbl">Preview Banner:</label>
+          <div class="adm-preview-wrap">
+            <img id="abf-preview-img" src="" alt="Preview Banner">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--gy4);margin-top:14px">
+        <button class="adm-btn-sec" onclick="admCloseBnrModal()">Batal</button>
+        <button class="adm-btn-primary" onclick="admBannerSave()"><i class="bi bi-save"></i> Simpan Banner</button>
+      </div>
+    </div>
+  `;
+  modal.style.display = 'flex';
+
+  // Setup drag & drop
+  const dz = $('abf-dropzone');
+  if(dz){
+    ['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, (e)=>{ e.preventDefault(); dz.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(evt => dz.addEventListener(evt, (e)=>{ e.preventDefault(); dz.classList.remove('dragover'); }));
+    dz.addEventListener('drop', (e)=>{
+      const f = e.dataTransfer?.files?.[0];
+      if(f) admBnrProcessFile(f);
+    });
+  }
+}
+
+function admBnrFileSelected(input){
+  const f = input?.files?.[0];
+  if(f) admBnrProcessFile(f);
+}
+
+function admBnrProcessFile(file){
+  const err = $('abf-file-err');
+  const warn = $('abf-ratio-warn');
+  window._admBnrImgData = null;
+  if(err) err.style.display = 'none';
+  const preview = $('abf-preview-container');
+  if(preview) preview.style.display = 'none';
+
+  // Validate type
+  const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+  if(!allowed.includes(file.type)){
+    if(err){ err.textContent = 'Format file tidak valid. Gunakan PNG, JPG, JPEG, atau WebP.'; err.style.display = 'block'; }
+    return;
+  }
+  // Validate size (max 3MB)
+  if(file.size > 3 * 1024 * 1024){
+    if(err){ err.textContent = 'Ukuran gambar terlalu besar (maksimal 3MB).'; err.style.display = 'block'; }
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onerror = function(){
+    if(err){ err.textContent = 'Gambar gagal dibaca. Silakan pilih file lain.'; err.style.display = 'block'; }
+  };
+  reader.onload = function(e){
+    const dataUrl = e.target.result;
+    const img = new Image();
+    img.onload = function(){
+      const ratio = img.width / img.height;
+      if(warn){
+        // Ideal ratio is around 3.0 (between 2.6 and 3.4)
+        warn.style.display = (ratio < 2.5 || ratio > 3.5) ? 'block' : 'none';
+      }
+      window._admBnrImgData = dataUrl;
+      const prevCont = $('abf-preview-container');
+      const prevImg = $('abf-preview-img');
+      if(prevCont && prevImg){
+        prevImg.src = dataUrl;
+        prevCont.style.display = 'block';
+      }
+    };
+    img.onerror = function(){
+      if(err){ err.textContent = 'File tidak dapat dibaca sebagai gambar.'; err.style.display = 'block'; }
+    };
+    img.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function admBannerSave(){
+  if(!Auth.isAdm()){ toast('Akses ditolak','error'); return; }
+  const title = $('abf-title')?.value.trim();
+  const titleErr = $('abf-title-err');
+  const fileErr = $('abf-file-err');
+
+  let valid = true;
+  if(!title){
+    if(titleErr) titleErr.style.display = 'block';
+    valid = false;
+  } else if(titleErr) titleErr.style.display = 'none';
+
+  if(!window._admBnrImgData){
+    if(fileErr){ fileErr.textContent = 'Silakan pilih gambar banner terlebih dahulu'; fileErr.style.display = 'block'; }
+    valid = false;
+  } else if(fileErr) fileErr.style.display = 'none';
+
+  if(!valid) return;
+
+  const banners = DB.banners();
+  if(banners.length >= 5){
+    toast('Maksimal 5 banner aktif sudah tercapai','error');
+    return;
+  }
+
+  const newBanner = {
+    id: gid('bnr'),
+    title: title,
+    image: window._admBnrImgData,
+    order: banners.length,
+    createdAt: new Date().toISOString()
+  };
+
+  if(!DB.setBanners([...banners, newBanner])){
+    toast('Banner gagal disimpan. Penyimpanan browser mungkin penuh; coba gambar yang lebih kecil.','error');
+    return;
+  }
+  toast(`Banner "${title}" berhasil ditambahkan`,'success');
+
+  admCloseBnrModal();
+  const main = $('main');
+  if(main) main.innerHTML = Pages.admin();
+}
+
+function admBannerDel(id){
+  if(!Auth.isAdm()){ toast('Akses ditolak','error'); return; }
+  const banners = DB.banners();
+  const b = banners.find(item => item.id === id);
+  if(!b) return;
+
+  const modal = $('adm-bnr-del-modal');
+  const inner = $('adm-bnr-del-modal-inner');
+  if(!modal || !inner) return;
+
+  inner.innerHTML = `
+    <div class="adm-modal-hdr">
+      <span class="adm-modal-title"><i class="bi bi-trash"></i> Hapus Banner</span>
+      <button class="adm-modal-close" onclick="admCloseBnrDelModal()">×</button>
+    </div>
+    <div style="padding:20px">
+      <p style="color:var(--dk3);margin-bottom:12px">Apakah Anda yakin ingin menghapus banner <strong>"${esc(b.title||'Banner')}"</strong>?</p>
+      <div class="adm-info-box"><i class="bi bi-info-circle"></i> Banner akan langsung dihapus dari carousel halaman utama.</div>
+      <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+        <button class="adm-btn-sec" onclick="admCloseBnrDelModal()">Batal</button>
+        <button class="adm-btn-danger" onclick="admBannerDelConfirm('${id}')"><i class="bi bi-trash"></i> Hapus Banner</button>
+      </div>
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function admBannerDelConfirm(id){
+  if(!Auth.isAdm()){ toast('Akses ditolak','error'); return; }
+  const banners = DB.banners();
+  const b = banners.find(item => item.id === id);
+  if(!b)return;
+  if(!DB.delBanner(id)){
+    toast('Banner gagal dihapus dari penyimpanan browser.','error');
+    return;
+  }
+  toast(`Banner "${b?.title||'Promosi'}" berhasil dihapus`,'success');
+  admCloseBnrDelModal();
+
+  const main = $('main');
+  if(main) main.innerHTML = Pages.admin();
+}
+
   window.copyT             = copyT;
   window.goAdmSub          = goAdmSub;
   window.admChartClick     = admChartClick;
@@ -1849,6 +2162,13 @@ function admOrdCancelConfirm(txId){
   window.admOrdDetail      = admOrdDetail;
   window.admOrdUpdate      = admOrdUpdate;
   window.admOrdCancelConfirm = admOrdCancelConfirm;
+  window.admCloseBnrModal    = admCloseBnrModal;
+  window.admCloseBnrDelModal = admCloseBnrDelModal;
+  window.admBannerNew        = admBannerNew;
+  window.admBnrFileSelected  = admBnrFileSelected;
+  window.admBannerSave       = admBannerSave;
+  window.admBannerDel        = admBannerDel;
+  window.admBannerDelConfirm = admBannerDelConfirm;
 
   // Hide loading screen & navigate to home
   setTimeout(() => {

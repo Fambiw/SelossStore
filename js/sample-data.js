@@ -110,15 +110,26 @@ export function sampleProds() {
 export function sampleBanners() {
   return [
     {
-      image: 'assett/banner-promo1.png',
-      prodId: 'canva',
-      title: '',
-      sub: ''
+      id: 'bnr_1',
+      title: 'Contoh Banner 1',
+      image: 'assett/Contoh_Banner_1.png',
+      order: 0,
+      createdAt: '2025-01-01T00:00:00.000Z'
     },
-    { tag: 'Paling Laris', title: 'Larisann!\nPilihan Terfavorit', sub: 'Canva, Capcut, Netflix & ChatGPT — harga terjangkau!', bg: 'linear-gradient(135deg,#10052a 0%,#0a1628 60%,#1a0a00 100%)' },
-    { tag: 'Streaming Premium', title: 'Netflix, Disney\n& WeTV Murah!', sub: 'Nonton tanpa batas mulai Rp15.000', bg: 'linear-gradient(135deg,#071a10 0%,#0a1628 60%,#0a1a10 100%)' },
-    { tag: 'Editing Tools', title: 'Canva, Capcut\n& Alight Motion!', sub: 'Edit konten profesional harga terjangkau', bg: 'linear-gradient(135deg,#1a0a33 0%,#0a0a28 100%)' },
-    { tag: 'AI Premium', title: 'ChatGPT & Gemini\nHarga Terbaik!', sub: 'AI canggih untuk produktivitas harianmu', bg: 'linear-gradient(135deg,#0a1a10 0%,#1a0a33 100%)' },
+    {
+      id: 'bnr_2',
+      title: 'Contoh Banner 2',
+      image: 'assett/Contoh_Banner_2.png',
+      order: 1,
+      createdAt: '2025-01-02T00:00:00.000Z'
+    },
+    {
+      id: 'bnr_3',
+      title: 'Contoh Banner 3',
+      image: 'assett/Contoh_Banner_3.png',
+      order: 2,
+      createdAt: '2025-01-03T00:00:00.000Z'
+    }
   ];
 }
 

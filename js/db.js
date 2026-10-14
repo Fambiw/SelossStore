@@ -10,7 +10,12 @@ export const DB = {
     }
   },
   s(k, v) {
-    try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      return true;
+    } catch {
+      return false;
+    }
   },
   d(k) {
     localStorage.removeItem(k);
@@ -51,6 +56,20 @@ export const DB = {
     const ps = this.prods().filter(p => p.id !== id);
     this.s('sl_prods', ps);
     return ps;
+  },
+
+  banners() {
+    const stored = this.g('sl_banners', null);
+    if (stored && Array.isArray(stored)) return stored;
+    return [];
+  },
+  setBanners(b) {
+    if (!Array.isArray(b) || b.length > 5) return false;
+    return this.s('sl_banners', b);
+  },
+  delBanner(id) {
+    const bs = this.banners().filter(b => b.id !== id);
+    return this.setBanners(bs) ? bs : null;
   },
   
   txs() { return this.g('sl_txs', []); },
