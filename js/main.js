@@ -213,14 +213,6 @@ const Pages={
     <div class="aig"><label>Password</label><div class="aii-wrap"><i class="bi bi-lock-fill aii-ico"></i><input class="aii" id="le-pw" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="aii-pw" type="button" onclick="tglPw('le-pw',this)"><i class="bi bi-eye-fill"></i></button></div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><label class="a-rem"><input type="checkbox" id="le-rem"> Ingat saya</label><a href="#" class="a-lnk" onclick="R.go('forgot');return false" style="font-size:.8rem">Lupa password?</a></div>
     <button class="a-btn pulse" onclick="doLogin()"><i class="bi bi-box-arrow-in-right"></i> Masuk Sekarang</button>
-    <div class="a-divider">atau coba demo</div>
-    <button class="a-btn ghost" onclick="demoLogin('user')"><i class="bi bi-person" aria-hidden="true"></i> Login Cepat sebagai User 1</button>
-    <button class="a-btn ghost" onclick="demoLogin('admin')" style="margin-top:8px"><i class="bi bi-shield-lock" aria-hidden="true"></i> Login Cepat sebagai Admin</button>
-    <div style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--gy4);border-radius:10px;font-size:0.75rem;color:var(--t2);line-height:1.6;text-align:left">
-      <div style="font-weight:600;color:var(--t1);margin-bottom:4px"><i class="bi bi-key" aria-hidden="true"></i> Akun Tersedia:</div>
-      <div>• <strong>Admin:</strong> <code>adminseloss@jimail.com</code> (Password: <code>Hanyaadmin123</code>)</div>
-      <div>• <strong>User:</strong> <code>user1seloss@jimail.com</code> s/d <code>user5seloss@jimail.com</code> (Password: <code>Masuk123</code>)</div>
-    </div>
   </div>`},
 
   regH(){return`<div class="ac fade-in">
@@ -901,11 +893,11 @@ function demoLogin(role){
   try{
     if(role==='admin'){Auth.login(CFG.adminEmail,'Hanyaadmin123',true)}
     else{
-      if(!DB.findU('user1seloss@jimail.com')){
+      if(!DB.findU('user1seloss@gmail.com')){
         const u1 = sampleUsers().find(u => u.id === 'user_001');
         if (u1) DB.upsertU(u1);
       }
-      Auth.login('user1seloss@jimail.com','Masuk123',true);
+      Auth.login('user1seloss@gmail.com','Masuk123',true);
     }
     toast('Login berhasil! Selamat menjelajah','success');R.go('home');
   }catch(e){toast(e.message,'error')}
@@ -1533,7 +1525,7 @@ function copyT(text) {
 // ============================================================
 function initApp() {
   console.log('[DEBUG] initApp starting. Current users:', DB.users().map(u => u.email));
-  // Seed sample users (admin & 5 default user accounts)
+  // Seed sample users (admin & 10 default user accounts)
   sampleUsers().forEach(u => {
     const existing = DB.findU(u.email) || DB.findById(u.id);
     if (!existing) {

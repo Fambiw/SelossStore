@@ -138,7 +138,7 @@ export function sampleUsers() {
     {
       id: 'admin_001',
       name: 'Admin Seloss',
-      email: 'adminseloss@jimail.com',
+      email: 'adminseloss@gmail.com',
       passwordHash: hs('Hanyaadmin123'),
       phone: '6281234567890',
       avatar: 'A',
@@ -148,7 +148,7 @@ export function sampleUsers() {
     {
       id: 'user_001',
       name: 'User 1 Seloss',
-      email: 'user1seloss@jimail.com',
+      email: 'user1seloss@gmail.com',
       passwordHash: hs('Masuk123'),
       phone: '081234560001',
       avatar: 'U1',
@@ -158,7 +158,7 @@ export function sampleUsers() {
     {
       id: 'user_002',
       name: 'User 2 Seloss',
-      email: 'user2seloss@jimail.com',
+      email: 'user2seloss@gmail.com',
       passwordHash: hs('Masuk123'),
       phone: '081234560002',
       avatar: 'U2',
@@ -168,7 +168,7 @@ export function sampleUsers() {
     {
       id: 'user_003',
       name: 'User 3 Seloss',
-      email: 'user3seloss@jimail.com',
+      email: 'user3seloss@gmail.com',
       passwordHash: hs('Masuk123'),
       phone: '081234560003',
       avatar: 'U3',
@@ -178,7 +178,7 @@ export function sampleUsers() {
     {
       id: 'user_004',
       name: 'User 4 Seloss',
-      email: 'user4seloss@jimail.com',
+      email: 'user4seloss@gmail.com',
       passwordHash: hs('Masuk123'),
       phone: '081234560004',
       avatar: 'U4',
@@ -188,10 +188,60 @@ export function sampleUsers() {
     {
       id: 'user_005',
       name: 'User 5 Seloss',
-      email: 'user5seloss@jimail.com',
+      email: 'user5seloss@gmail.com',
       passwordHash: hs('Masuk123'),
       phone: '081234560005',
       avatar: 'U5',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_006',
+      name: 'User 6 Seloss',
+      email: 'user6seloss@gmail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560006',
+      avatar: 'U6',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_007',
+      name: 'User 7 Seloss',
+      email: 'user7seloss@gmail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560007',
+      avatar: 'U7',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_008',
+      name: 'User 8 Seloss',
+      email: 'user8seloss@gmail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560008',
+      avatar: 'U8',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_009',
+      name: 'User 9 Seloss',
+      email: 'user9seloss@gmail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560009',
+      avatar: 'U9',
+      role: 'user',
+      createdAt: '2025-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'user_010',
+      name: 'User 10 Seloss',
+      email: 'user10seloss@gmail.com',
+      passwordHash: hs('Masuk123'),
+      phone: '081234560010',
+      avatar: 'U10',
       role: 'user',
       createdAt: '2025-01-01T00:00:00.000Z'
     }

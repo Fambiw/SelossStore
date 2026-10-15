@@ -1,6 +1,6 @@
 export const CFG = {
   adminWA: '6285111232205', //GANTI nomor WA admin di sini
-  adminEmail: 'adminseloss@jimail.com',
+  adminEmail: 'adminseloss@gmail.com',
   siteName: 'Seloss Store',
 };
 
