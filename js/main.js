@@ -1121,7 +1121,7 @@ function renderPaymentStep(){
           <span>Total Pembayaran</span>
           <strong>${fmt(cd.variant?.p || 0)}</strong>
         </div>
-        <p class="co-payment-text">Scan QR di samping dan bayar sesuai nominal yang tertera.</p>
+        <p class="co-payment-text">Scan QR dan bayar sesuai nominal yang tertera.</p>
 
         <div class="co-proof-box">
           <label class="co-proof-label">Upload Bukti Transfer</label>
