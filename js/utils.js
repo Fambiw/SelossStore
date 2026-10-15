@@ -17,6 +17,25 @@ export function gid(p = 'id') {
   return `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+export function generateOrderId(existingIds = [], date = new Date()) {
+  const pad = value => String(value).padStart(2, '0');
+  const dateCode = `${pad(date.getDate())}${pad(date.getMonth() + 1)}${pad(date.getFullYear() % 100)}`;
+  const prefix = `ORD-${dateCode}`;
+  const usedCodes = new Set(existingIds
+    .filter(id => typeof id === 'string' && id.startsWith(`${prefix}-`))
+    .map(id => id.slice(prefix.length + 1))
+    .filter(code => /^\d{8}$/.test(code)));
+
+  if (usedCodes.size >= 100_000_000) throw new Error('Kode pesanan untuk tanggal ini sudah habis');
+
+  let code = String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0');
+  while (usedCodes.has(code)) {
+    code = String((Number(code) + 1) % 100_000_000).padStart(8, '0');
+  }
+
+  return `${prefix}-${code}`;
+}
+
 // Format Rupiah currency
 export function fmt(n) {
   return 'Rp ' + Number(n).toLocaleString('id-ID');

@@ -1,6 +1,24 @@
-import { fmt, vEmail, vWA, nWA, disc } from '../js/utils.js';
+import { fmt, generateOrderId, vEmail, vWA, nWA, disc } from '../js/utils.js';
 
 describe('Utility Functions', () => {
+  describe('generateOrderId()', () => {
+    it('should generate an order ID with the requested date and eight-digit code', () => {
+      const random = jest.spyOn(Math, 'random').mockReturnValue(0.12345678);
+
+      expect(generateOrderId([], new Date(2026, 9, 15))).toBe('ORD-151026-12345678');
+
+      random.mockRestore();
+    });
+
+    it('should avoid an existing code for the same date', () => {
+      const random = jest.spyOn(Math, 'random').mockReturnValue(0.12345678);
+
+      expect(generateOrderId(['ORD-151026-12345678'], new Date(2026, 9, 15))).toBe('ORD-151026-12345679');
+
+      random.mockRestore();
+    });
+  });
+
   describe('fmt() - Currency Formatter', () => {
     it('should format numbers to Indonesian Rupiah', () => {
       // Arrange

@@ -2,7 +2,7 @@
 //  SELOSS STORE — Main Application Script v1.0// ============================================================
 
 import { CFG, PMETHODS, STLBLS } from './config.js';
-import { hs, gid, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
+import { hs, gid, generateOrderId, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
 import { sampleProds, sampleBanners, sampleUsers } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
@@ -462,7 +462,8 @@ const Pages={
     const waMsg=buildWA(p,v,cd);
     const waLink=`https://wa.me/${CFG.adminWA}?text=${encodeURIComponent(waMsg)}`;
     if(!cd.txId){
-      const tx={id:gid('tx'),userId:Auth.cu.id,userName:cd.form['f-name']||Auth.cu?.name||'',userWA:cd.form['f-wa']||'',userEmail:cd.form['f-em']||'',productId:p.id,productName:p.name,productIcon:p.image,variantId:v.id,variantName:v.n,amount:v.p,paymentMethod:cd.pm,formData:cd.form,proofImage:cd.proof?'uploaded':null,status:'pending',waMessage:waMsg,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+      const createdAt=new Date().toISOString();
+      const tx={id:generateOrderId(DB.txs().map(item=>item.id),new Date(createdAt)),userId:Auth.cu.id,userName:cd.form['f-name']||Auth.cu?.name||'',userWA:cd.form['f-wa']||'',userEmail:cd.form['f-em']||'',productId:p.id,productName:p.name,productIcon:p.image,variantId:v.id,variantName:v.n,amount:v.p,paymentMethod:cd.pm,formData:cd.form,proofImage:cd.proof?'uploaded':null,status:'pending',waMessage:waMsg,createdAt,updatedAt:createdAt};
       DB.upsertTx(tx);St.co.txId=tx.id;
     }
     const pm=PMETHODS.find(m=>m.id===cd.pm);
@@ -765,7 +766,7 @@ const Pages={
               <tbody>${filtered.map(tx => {
                 const pm = PMETHODS.find(m=>m.id===tx.paymentMethod);
                 return `<tr>
-                  <td style="font-family:monospace;font-size:.7rem;color:var(--gy)">${tx.id.slice(-10)}</td>
+                  <td style="font-family:monospace;font-size:.7rem;color:var(--gy);white-space:nowrap">${esc(tx.id)}</td>
                   <td><div style="display:flex;align-items:center;gap:8px">
                     ${tx.productIcon?`<img src="${esc(tx.productIcon)}" style="width:28px;height:28px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">`:`<span style="width:28px;height:28px;border-radius:6px;background:var(--pr-l);color:var(--pr-d);display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">${esc((tx.productName||'?').charAt(0))}</span>`}
                     <div><div style="font-weight:600;font-size:.82rem">${esc(tx.productName||'-')}</div><div style="font-size:.7rem;color:var(--gy)">${esc(tx.variantName||'-')}</div></div>
@@ -840,7 +841,7 @@ const Pages={
   admRows(txs){
     if(!txs.length)return'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gy)">Belum ada transaksi</td></tr>';
     return txs.map(tx=>`<tr>
-      <td style="font-size:.7rem;color:var(--gy);font-family:monospace">${tx.id.slice(-8)}</td>
+      <td style="font-size:.7rem;color:var(--gy);font-family:monospace;white-space:nowrap">${esc(tx.id)}</td>
       <td><div style="font-weight:600;font-size:.83rem">${tx.productIcon?`<img src="${tx.productIcon}" style="width:20px;height:20px;vertical-align:middle;border-radius:4px;margin-right:4px">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'} ${esc(tx.productName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.variantName)}</div></td>
       <td><div style="font-size:.83rem;font-weight:500">${esc(tx.userName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.userWA||'-')}</div></td>
       <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
