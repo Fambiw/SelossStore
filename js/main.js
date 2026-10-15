@@ -1940,6 +1940,7 @@ function admOrdCancelConfirm(txId){
 }
 
 // ── ADMIN BANNER HANDLERS ─────────────────────────────────────
+function trigBannerUpload(){$('abf-file')?.click()}
 function admCloseBnrModal(){ const m=$('adm-bnr-modal'); if(m) m.style.display='none'; window._admBnrImgData = null; }
 function admCloseBnrDelModal(){ const m=$('adm-bnr-del-modal'); if(m) m.style.display='none'; }
 
@@ -1970,7 +1971,7 @@ function admBannerNew(){
 
       <div class="adm-form-row">
         <label class="adm-form-lbl">Upload Gambar Banner <span style="color:var(--ac)">*</span></label>
-        <div class="adm-upload-zone" id="abf-dropzone" onclick="$('abf-file').click()">
+        <div class="adm-upload-zone" id="abf-dropzone" onclick="trigBannerUpload()">
           <i class="bi bi-cloud-arrow-up" style="font-size:2rem;color:var(--pr);display:block;margin-bottom:6px"></i>
           <span style="font-size:.85rem;font-weight:600;color:var(--dk)">Klik untuk pilih gambar atau seret file ke sini</span>
           <div style="font-size:.73rem;color:var(--gy);margin-top:4px">Format: PNG, JPG, JPEG, WebP (Maks. 10MB; gambar dikompres otomatis)</div>
@@ -2230,6 +2231,7 @@ function admBannerDelConfirm(id){
   window.admOrdCancelConfirm = admOrdCancelConfirm;
   window.admCloseBnrModal    = admCloseBnrModal;
   window.admCloseBnrDelModal = admCloseBnrDelModal;
+  window.trigBannerUpload    = trigBannerUpload;
   window.admBannerNew        = admBannerNew;
   window.admBnrFileSelected  = admBnrFileSelected;
   window.admBnrUseSample     = admBnrUseSample;
