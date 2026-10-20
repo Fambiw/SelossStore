@@ -479,7 +479,7 @@
   ======================================================== */
   .pf-hdr{background:linear-gradient(135deg,var(--dk),#150a30);border-radius:var(--r4);padding:28px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden}
   .pf-hdr::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(37,99,235,.2),transparent 60%)}
-  .pf-av{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--pr),var(--sc));display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:800;color:#fff;margin:0 auto 10px;border:3px solid rgba(255,255,255,.18);position:relative;z-index:1}
+  .pf-av{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--pr),var(--sc));display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:800;color:#fff;margin:0 auto 10px;border:3px solid rgba(255,255,255,.18);position:relative;z-index:1;overflow:hidden}
   .pf-nm{font-size:1.15rem;font-weight:700;color:#fff;position:relative;z-index:1}
   .pf-em{font-size:.8rem;color:rgba(255,255,255,.55);position:relative;z-index:1;margin-top:3px}
   .pf-role{display:inline-block;margin-top:8px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:.68rem;font-weight:600;padding:3px 10px;border-radius:50px;position:relative;z-index:1}
@@ -768,7 +768,7 @@
    .sb-profile:hover{background:var(--pr-ll);border-color:var(--pr-l)}
    .sb-profile.act{background:var(--pr-ll);border-color:var(--pr-l)}
    .sb-profile>i{margin-left:auto;color:var(--gy);font-size:.76rem}
-   .sb-avatar{width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;background:var(--pr-l);color:var(--pr-d);font-size:.95rem;font-weight:700}
+   .sb-avatar{width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;background:var(--pr-l);color:var(--pr-d);font-size:.95rem;font-weight:700;overflow:hidden}
    .sb-user-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
    .sb-user-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem}
    .sb-user-copy small{color:var(--gy);font-size:.7rem}
@@ -856,7 +856,7 @@
    .profile-heading h1{margin:0;color:var(--dk);font-size:1.45rem;font-weight:700}
    .profile-heading p{margin:6px 0 0;color:var(--gy);font-size:.84rem}
    .profile-identity{text-align:center;margin-bottom:20px}
-   .pf-av{position:static;display:grid;place-items:center;width:92px;height:92px;margin:0 auto 10px;border:3px solid var(--wh);background:var(--pr-l);color:var(--pr-d);font-size:2rem;box-shadow:0 0 0 1px var(--gy4)}
+   .pf-av{position:static;display:grid;place-items:center;width:92px;height:92px;margin:0 auto 10px;border:3px solid var(--wh);background:var(--pr-l);color:var(--pr-d);font-size:2rem;box-shadow:0 0 0 1px var(--gy4);overflow:hidden}
    .profile-identity .pf-nm{color:var(--dk);font-size:1rem;font-weight:700}
    .profile-identity .pf-em{margin-top:3px;color:var(--gy);font-size:.8rem}
    .profile-notice{margin-top:8px;color:var(--gy);font-size:.72rem}

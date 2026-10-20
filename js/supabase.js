@@ -187,7 +187,7 @@ export const SupabaseAuth = {
   async signInWithGoogle() {
     if (!isSupabaseConfigured()) throw new Error('Supabase client belum dikonfigurasi');
 
-    const redirectTo = window.location.origin + window.location.pathname;
+    const redirectTo = window.location.href.split('#')[0].split('?')[0];
 
     try {
       const sb = await getSupabase();

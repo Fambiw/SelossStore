@@ -53,7 +53,13 @@ function updNav(){
   const u=Auth.cu;if(!u)return;
   const avatar=u.avatar||u.name?.[0]||'';
   const av=$('sb-avatar'),name=$('sb-user-name'),role=$('sb-user-role');
-  if(av)av.textContent=avatar;
+  if(av){
+    if(typeof avatar === 'string' && (avatar.startsWith('http://') || avatar.startsWith('https://'))){
+      av.innerHTML=`<img src="${esc(avatar)}" alt="${esc(u.name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='${esc((u.name?.[0]||'U').toUpperCase())}'">`;
+    } else {
+      av.textContent=avatar;
+    }
+  }
   if(name)name.textContent=u.name;
   if(role)role.textContent=Auth.isAdm()?'Administrator':'Member';
   const isAdm=Auth.isAdm();
@@ -538,7 +544,7 @@ const Pages={
     return`<section class="profile-page">
       <header class="profile-heading"><h1>Edit Profil</h1><p>Perbarui informasi akun dan keamanan Anda.</p></header>
       <div class="profile-identity">
-        <div class="pf-av" id="pf-av">${esc(u.avatar||u.name.charAt(0).toUpperCase())}</div>
+        <div class="pf-av" id="pf-av">${typeof u.avatar === 'string' && (u.avatar.startsWith('http://') || u.avatar.startsWith('https://')) ? `<img src="${esc(u.avatar)}" alt="${esc(u.name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='${esc((u.name?.[0]||'U').toUpperCase())}'">` : esc(u.avatar||u.name.charAt(0).toUpperCase())}</div>
         <div class="pf-nm" id="pf-nm">${esc(u.name)}</div>
         <div class="pf-em" id="pf-em">${esc(u.email)}</div>
         <div class="profile-notice">Foto profil belum dapat diganti dari website.</div>
