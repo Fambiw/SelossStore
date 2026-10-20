@@ -37,6 +37,20 @@ export function toast(msg, type = 'success', dur = 3500) {
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => rmT(id), dur);
 }
+
+function checkoutField(key, profileValue){
+  return Object.prototype.hasOwnProperty.call(St.co.form,key)
+    ? St.co.form[key]
+    : (profileValue||'');
+}
+
+function prefillCheckoutForm(){
+  const user=Auth.cu;
+  if(!user)return;
+  if(!Object.prototype.hasOwnProperty.call(St.co.form,'f-name'))St.co.form['f-name']=user.name||'';
+  if(!Object.prototype.hasOwnProperty.call(St.co.form,'f-em'))St.co.form['f-em']=user.email||'';
+  if(!Object.prototype.hasOwnProperty.call(St.co.form,'f-wa'))St.co.form['f-wa']=user.phone||'';
+}
 window.toast = toast;
 
 export function rmT(id) {
@@ -236,6 +250,7 @@ const Pages={
     <div class="a-err" id="re"></div>
     <div class="aig"><label>Nama Lengkap</label><div class="aii-wrap"><i class="bi bi-person-fill aii-ico"></i><input class="aii" id="re-nm" type="text" placeholder="Nama kamu" autocomplete="name" onkeydown="if(event.key==='Enter')doReg()"></div></div>
     <div class="aig"><label>Email</label><div class="aii-wrap"><i class="bi bi-envelope-fill aii-ico"></i><input class="aii" id="re-em" type="email" placeholder="email@kamu.com" autocomplete="email" onkeydown="if(event.key==='Enter')doReg()"></div></div>
+    <div class="aig"><label>Nomor Telepon / WhatsApp</label><div class="aii-wrap"><i class="bi bi-telephone-fill aii-ico"></i><input class="aii" id="re-ph" type="tel" placeholder="08xxxxxxxxxx" autocomplete="tel" onkeydown="if(event.key==='Enter')doReg()"></div></div>
     <div class="aig"><label>Password <span style="font-size:.72rem;color:rgba(255,255,255,.3)">(min. 6 karakter)</span></label><div class="aii-wrap"><i class="bi bi-lock-fill aii-ico"></i><input class="aii" id="re-pw" type="password" placeholder="Buat password kuat" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()"><button class="aii-pw" type="button" onclick="tglPw('re-pw',this)"><i class="bi bi-eye-fill"></i></button></div></div>
     <div class="aig"><label>Konfirmasi Password</label><div class="aii-wrap"><i class="bi bi-shield-lock-fill aii-ico"></i><input class="aii" id="re-cf" type="password" placeholder="Ulangi password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()"><button class="aii-pw" type="button" onclick="tglPw('re-cf',this)"><i class="bi bi-eye-fill"></i></button></div></div>
     <button class="a-btn pulse" onclick="doReg()"><i class="bi bi-person-plus-fill"></i> Daftar Sekarang</button>
@@ -266,6 +281,37 @@ const Pages={
     <div class="a-ft">Setelah itu, lengkapi nama dan nomor kontak di halaman profil.</div>
   </div>`},
 
+  completeProfile(){
+    const user=Auth.cu;
+    if(!user)return'';
+    return`<section class="profile-page">
+      <header class="profile-heading"><h1>Lengkapi Data Diri</h1><p>Lengkapi profil agar dapat menggunakan fitur Seloss Store.</p></header>
+      <section class="profile-form" aria-label="Lengkapi profil">
+        <div class="a-err" id="complete-profile-error"></div>
+        <div class="profile-fields">
+          <div class="profile-field full">
+            <label for="cp-name">Nama lengkap</label>
+            <input id="cp-name" type="text" autocomplete="name" value="${esc(user.name||'')}" required>
+          </div>
+          <div class="profile-field full">
+            <label for="cp-email">Email akun</label>
+            <input id="cp-email" type="email" value="${esc(user.email||'')}" readonly>
+            <small class="profile-notice">Email berasal dari akun autentikasi dan tidak dapat diubah di sini.</small>
+          </div>
+          <div class="profile-field full">
+            <label for="cp-phone">Nomor telepon / WhatsApp</label>
+            <input id="cp-phone" type="tel" autocomplete="tel" placeholder="08xxxxxxxxxx" value="${esc(user.phone||'')}" required>
+            <small class="profile-notice">Nomor hanya divalidasi formatnya, belum diverifikasi dengan OTP.</small>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button type="button" onclick="doLogout()">Keluar</button>
+          <button type="button" class="profile-save" id="complete-profile-save" onclick="saveCompleteProfile()">Simpan Data Diri</button>
+        </div>
+      </section>
+    </section>`;
+  },
+
   // ── APP PAGES ────────────────────────────────────────────
   app(page,prms){
     if(page!=='home'&&BslTimer){clearInterval(BslTimer);BslTimer=null;}
@@ -275,6 +321,7 @@ const Pages={
     else if(page==='checkout')main.innerHTML=this.checkout();
     else if(page==='history')main.innerHTML=this.hist();
     else if(page==='profile')main.innerHTML=this.profile();
+    else if(page==='complete-profile')main.innerHTML=this.completeProfile();
     else if(page==='admin'){
       if(!Auth.isAdm()){toast('Akses ditolak','error');R.go('home');return;}
       if(!window._admSub) window._admSub='dashboard';
@@ -355,6 +402,7 @@ const Pages={
     const p=DB.prods().find(pr=>pr.id===prms.productId);
     if(!p)return`<div class="empty-st"><span class="ei"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></span><h3>Produk tidak ditemukan</h3><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Ke Beranda</button></div>`;
     St.co.prod=p;St.co.variant=p.vars[0];St.co.step=1;
+    prefillCheckoutForm();
     return`<div class="ph"><button class="back-btn" onclick="R.go('home')"><i class="bi bi-arrow-left"></i></button><div class="ph-ttl">Detail Produk</div></div>
     <div class="dt-hdr"><div class="dt-ico"><i class="bi bi-box-seam" aria-hidden="true"></i></div><div class="dt-info"><div class="dt-nm">${esc(p.name)}</div>
     <div class="dt-rt"><i class="bi bi-star-fill star" aria-hidden="true"></i> ${p.rating} &nbsp;•&nbsp; <i class="bi bi-bag-check-fill"></i> ${p.sold?.toLocaleString('id-ID')} terjual${p.flash?` &nbsp;•&nbsp; <span><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Flash Sale!</span>`:''}</div>
@@ -876,11 +924,13 @@ async function doLogin(){
 }
 
 async function doReg(){
-  const nm=$('re-nm')?.value,em=$('re-em')?.value,pw=$('re-pw')?.value,cf=$('re-cf')?.value;
+  const nm=$('re-nm')?.value,em=$('re-em')?.value,phone=$('re-ph')?.value,pw=$('re-pw')?.value,cf=$('re-cf')?.value;
   hiAErr('re');
+  if(!phone?.trim()){shAErr('re','Nomor telepon atau WhatsApp wajib diisi');return}
+  if(!vWA(phone)){shAErr('re','Format nomor telepon tidak valid. Gunakan 08xxx atau 628xxx');return}
   if(pw!==cf){shAErr('re','Password dan konfirmasi tidak cocok');return}
   try{
-    await Auth.reg(nm,em,pw);
+    await Auth.reg(nm,em,phone,pw);
     await Auth.login(em,pw,false);
     toast('Akun berhasil dibuat! Selamat bergabung','success');
     R.go('home');
@@ -963,6 +1013,9 @@ function openConfirmOrder(){
   const nm=$('co-name')?.value.trim();
   const wa=$('co-wa')?.value.trim();
   const em=$('co-email')?.value.trim();
+  cd.form['f-name']=nm||'';
+  cd.form['f-wa']=wa||'';
+  cd.form['f-em']=em||'';
   let err=false;
 
   if(!nm){$('co-err-name')?.classList.add('show');err=true}else $('co-err-name')?.classList.remove('show');
@@ -972,7 +1025,7 @@ function openConfirmOrder(){
   if(err){toast('Mohon lengkapi data pemesanan sebelum lanjut','warning');return}
 
   cd.form['f-name']=nm;
-  cd.form['f-wa']=nWA(wa);
+  cd.form['f-wa']=wa;
   cd.form['f-em']=em;
   cd.confirmOpen=true;
 
@@ -1006,13 +1059,16 @@ function coNext(){
   const cd=St.co;
   if(cd.step===1){
     const nm=$('co-name')?.value.trim(),wa=$('co-wa')?.value.trim(),em=$('co-email')?.value.trim();
+    cd.form['f-name']=nm||'';
+    cd.form['f-wa']=wa||'';
+    cd.form['f-em']=em||'';
     let err=false;
     if(!nm){$('co-err-name')?.classList.add('show');err=true}else $('co-err-name')?.classList.remove('show');
     if(!wa||!vWA(wa)){$('co-err-wa')?.classList.add('show');err=true}else $('co-err-wa')?.classList.remove('show');
     if(!em||!vEmail(em)){$('co-err-email')?.classList.add('show');err=true}else $('co-err-email')?.classList.remove('show');
     if(!cd.pm){toast('Pilih metode pembayaran dulu!','warning');return}
     if(err){toast('Mohon lengkapi semua data yang diperlukan','warning');return}
-    cd.form['f-name']=nm;cd.form['f-wa']=nWA(wa);cd.form['f-em']=em;
+    cd.form['f-wa']=nWA(wa);
     openConfirmOrder();
     return;
   }
@@ -1090,19 +1146,19 @@ function renderFormatStep(){
         <div class="co-form-block">
           <div class="co-input-group">
             <label>Nama pelanggan</label>
-            <input id="co-name" class="co-input" type="text" value="${esc(cd.form['f-name'] || Auth.cu?.name || '')}" placeholder="Masukkan nama Anda" />
+            <input id="co-name" class="co-input" type="text" value="${esc(checkoutField('f-name',Auth.cu?.name))}" placeholder="Masukkan nama Anda" />
             <div class="co-error" id="co-err-name">Nama tidak boleh kosong</div>
           </div>
 
           <div class="co-input-group">
             <label>Nomor WhatsApp aktif</label>
-            <input id="co-wa" class="co-input" type="tel" value="${esc(cd.form['f-wa'] || Auth.cu?.phone || '')}" placeholder="08xxxxxxxxxx" />
+            <input id="co-wa" class="co-input" type="tel" value="${esc(checkoutField('f-wa',Auth.cu?.phone))}" placeholder="08xxxxxxxxxx" />
             <div class="co-error" id="co-err-wa">Format nomor WA tidak valid</div>
           </div>
 
           <div class="co-input-group">
             <label>Email</label>
-            <input id="co-email" class="co-input" type="email" value="${esc(cd.form['f-em'] || Auth.cu?.email || '')}" placeholder="nama@email.com" />
+            <input id="co-email" class="co-input" type="email" value="${esc(checkoutField('f-em',Auth.cu?.email))}" placeholder="nama@email.com" />
             <div class="co-error" id="co-err-email">Format email tidak valid</div>
           </div>
 
@@ -1114,7 +1170,7 @@ function renderFormatStep(){
           </div>
         </div>
 
-        <button class="co-primary-btn" onclick="openConfirmOrder()">Pay</button>
+        <button class="co-primary-btn" onclick="openConfirmOrder()">Lanjutkan</button>
       </div>
     </div>
 
@@ -1276,8 +1332,8 @@ async function submitProofAndContinue(){
     const tx = await DB.createTx({
       userId: user.id,
       userName: cd.form['f-name'] || user.name || '',
-      userWA: cd.form['f-wa'] || '',
-      userEmail: user.email || '',
+      userWA: nWA(cd.form['f-wa'] || ''),
+      userEmail: cd.form['f-em'] || '',
       productId: cd.prod.id,
       productName: cd.prod.name,
       productIcon: cd.prod.image || '',
@@ -1368,6 +1424,57 @@ async function saveProf(){
   }catch(err){
     console.error('[Auth] Gagal menyimpan profil ke Supabase:',err);
     toast('Profil gagal disimpan ke server. Periksa koneksi dan kebijakan akses Supabase.','error');
+  }
+}
+
+async function saveCompleteProfile(){
+  const user=Auth.cu;
+  if(!user?.id){R.go('login');return}
+  const name=$('cp-name')?.value.trim()||'';
+  const phone=$('cp-phone')?.value.trim()||'';
+  const email=$('cp-email')?.value.trim().toLowerCase()||'';
+  const errorElement=$('complete-profile-error');
+  if(errorElement){errorElement.textContent='';errorElement.classList.remove('show')}
+  if(!name){
+    if(errorElement){errorElement.textContent='Nama lengkap wajib diisi';errorElement.classList.add('show')}
+    return;
+  }
+  if(!phone){
+    if(errorElement){errorElement.textContent='Nomor telepon atau WhatsApp wajib diisi';errorElement.classList.add('show')}
+    return;
+  }
+  if(!vWA(phone)){
+    if(errorElement){errorElement.textContent='Format nomor tidak valid. Gunakan 08xxx atau 628xxx';errorElement.classList.add('show')}
+    return;
+  }
+  if(email!==user.email?.trim().toLowerCase()){
+    if(errorElement){errorElement.textContent='Email harus sesuai dengan akun yang terautentikasi';errorElement.classList.add('show')}
+    return;
+  }
+
+  const button=$('complete-profile-save');
+  if(button)button.disabled=true;
+  try{
+    const profile=await SupabaseAuth.updateProfile(user.id,{name,phone:nWA(phone)});
+    const savedUser={
+      ...user,
+      name:profile.name||name,
+      phone:profile.phone||nWA(phone),
+      avatar:(profile.name||name)[0].toUpperCase(),
+      role:profile.role==='admin'?'admin':'user',
+    };
+    DB.upsertU(savedUser);
+    Auth.cu=savedUser;
+    toast('Data diri berhasil disimpan. Selamat datang di Seloss Store!','success');
+    R.go('home');
+  }catch(err){
+    console.error('[Auth] Gagal menyimpan data diri:',err);
+    if(errorElement){
+      errorElement.textContent='Data diri gagal disimpan ke server. Periksa koneksi atau coba lagi.';
+      errorElement.classList.add('show');
+    }
+  }finally{
+    if(button)button.disabled=false;
   }
 }
 
@@ -1517,7 +1624,7 @@ const R = {
     const authEl = $('auth');
     const appEl  = $('app');
     const AUTH_PAGES  = ['login', 'register', 'forgot', 'reset-password'];
-    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'profile', 'admin'];
+    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'profile', 'admin', 'complete-profile'];
 
     if (AUTH_PAGES.includes(page)) {
       document.body.classList.remove('adm-layout');
@@ -1532,6 +1639,15 @@ const R = {
         if (authEl) authEl.style.display = 'flex';
         if (appEl)  appEl.style.display  = 'none';
         Pages.auth('login');
+        return;
+      }
+      const profileIsComplete=Auth.hasCompleteProfile();
+      if(!profileIsComplete&&page!=='complete-profile'){
+        this.go('complete-profile');
+        return;
+      }
+      if(profileIsComplete&&page==='complete-profile'){
+        this.go('home');
         return;
       }
       if (page === 'admin') {
@@ -1781,6 +1897,7 @@ function initApp() {
   window.tglPw             = tglPw;
   window.doForg            = doForg;
   window.finishPasswordReset = finishPasswordReset;
+  window.saveCompleteProfile = saveCompleteProfile;
   window.updTx             = updTx;
   window.refreshAdminOrders = refreshAdminOrders;
   window.admWA             = admWA;
@@ -2481,6 +2598,10 @@ async function checkOAuthCallback() {
     || queryParams.get('type') === 'recovery'
     || hashParams.get('type') === 'recovery';
 
+  if (queryParams.get('error_description') || queryParams.get('error')) {
+    throw new Error(queryParams.get('error_description') || queryParams.get('error'));
+  }
+
   if (isRecovery) {
     const sb = await getSupabase();
     if (!sb) throw new Error('Koneksi Supabase tidak tersedia');
@@ -2497,7 +2618,7 @@ async function checkOAuthCallback() {
       name,
       email: safeEmail,
       passwordHash: '',
-      phone: profile?.phone || user.phone || '',
+      phone: profile?.phone || user.user_metadata?.phone || user.phone || '',
       avatar: user.user_metadata?.avatar_url || (name[0] || 'U').toUpperCase(),
       role: profile?.role === 'admin' ? 'admin' : 'user',
       createdAt: user.created_at || new Date().toISOString(),
@@ -2523,7 +2644,8 @@ async function checkOAuthCallback() {
       // 1. Coba getSession dari Supabase SDK jika aktif
       const sb = await getSupabase();
       if (sb) {
-        const { data } = await sb.auth.getSession();
+        const { data, error } = await sb.auth.getSession();
+        if (error) throw error;
         if (data?.session?.user) {
           user = data.session.user;
           accessToken = data.session.access_token;
@@ -2543,6 +2665,8 @@ async function checkOAuthCallback() {
           });
           if (uRes.ok) {
             user = await uRes.json();
+          } else {
+            throw new Error('Sesi Google tidak dapat diverifikasi');
           }
         }
       }
@@ -2559,7 +2683,7 @@ async function checkOAuthCallback() {
           name: rawName,
           email: safeEmail,
           passwordHash: '',
-          phone: profile?.phone || user.phone || '',
+          phone: profile?.phone || user.user_metadata?.phone || user.phone || '',
           avatar: avatar,
           role: profile?.role === 'admin' ? 'admin' : 'user',
           createdAt: user.created_at || new Date().toISOString(),
@@ -2582,7 +2706,9 @@ async function checkOAuthCallback() {
       }
     } catch (err) {
       console.error('❌ [Google OAuth] Error memproses login:', err);
+      throw err;
     }
+    if (queryParams.has('code')) throw new Error('Callback Google tidak menghasilkan sesi pengguna');
   }
   return null;
 }

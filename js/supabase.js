@@ -81,7 +81,7 @@ export const SupabaseAuth = {
   /**
    * Register pengguna baru ke Supabase Authentication
    */
-  async register(name, email, password) {
+  async register(name, email, phone, password) {
     if (!isSupabaseConfigured()) throw new Error('Supabase client belum dikonfigurasi');
 
     const cleanEmail = email.trim().toLowerCase();
@@ -97,6 +97,7 @@ export const SupabaseAuth = {
           options: {
             data: {
               name: cleanName,
+              phone,
             },
           },
         });
@@ -122,6 +123,7 @@ export const SupabaseAuth = {
         password: password,
         data: {
           name: cleanName,
+          phone,
         },
       }),
     });
@@ -288,6 +290,11 @@ export const SupabaseAuth = {
     const sb = await getSupabase();
     if (!sb) throw new Error('Supabase client belum tersedia');
     if (!userId) throw new Error('ID pengguna tidak tersedia');
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (sessionData?.session?.user?.id !== userId) {
+      throw new Error('Profil hanya dapat diubah oleh pemilik akun yang sedang login');
+    }
 
     const allowedProfileData = {
       ...(typeof profileData.name === 'string' ? { name: profileData.name } : {}),
@@ -523,6 +530,7 @@ export const SupabaseDB = {
         p_variant_id: tx.variantId,
         p_user_name: tx.userName,
         p_user_wa: tx.userWA,
+        p_user_email: tx.userEmail,
         p_payment_method: tx.paymentMethod,
         p_form_data: tx.formData || {},
         p_proof_image: proofPath,

@@ -10,12 +10,13 @@ describe('Auth Module', () => {
   describe('Registration', () => {
     it('should register a new user successfully', () => {
       // Arrange & Act
-      const user = Auth.reg('John Doe', 'john@example.com', 'password123');
+      const user = Auth.reg('John Doe', 'john@example.com', '081234567890', 'password123');
       
       // Assert
       expect(user).toBeDefined();
       expect(user.name).toBe('John Doe');
       expect(user.email).toBe('john@example.com');
+      expect(user.phone).toBe('6281234567890');
       
       const savedUser = DB.findU('john@example.com');
       expect(savedUser).toBeDefined();
@@ -23,31 +24,45 @@ describe('Auth Module', () => {
 
     it('should fail with invalid email', () => {
       expect(() => {
-        Auth.reg('John', 'invalid-email', '123456');
+        Auth.reg('John', 'invalid-email', '081234567890', '123456');
       }).toThrow('Format email tidak valid');
     });
 
+    it('should require a valid phone number', () => {
+      expect(() => Auth.reg('John', 'john@example.com', '', 'password123'))
+        .toThrow('Nomor telepon atau WhatsApp wajib diisi');
+      expect(() => Auth.reg('John', 'john@example.com', '12345', 'password123'))
+        .toThrow('Format nomor telepon tidak valid');
+    });
+
     it('should fail if email is already registered', () => {
-      Auth.reg('John', 'test@example.com', '123456');
+      Auth.reg('John', 'test@example.com', '081234567890', '123456');
       
       expect(() => {
-        Auth.reg('Jane', 'test@example.com', '654321');
+        Auth.reg('Jane', 'test@example.com', '081234567891', '654321');
       }).toThrow('Email sudah terdaftar');
     });
 
     it('should trim and normalize email input before validation and storage', () => {
-      const user = Auth.reg('  John Doe  ', '  JOHN@EXAMPLE.COM  ', 'password123');
+      const user = Auth.reg('  John Doe  ', '  JOHN@EXAMPLE.COM  ', '081234567890', 'password123');
 
       expect(user.name).toBe('John Doe');
       expect(user.email).toBe('john@example.com');
+      expect(user.phone).toBe('6281234567890');
       expect(DB.findU('john@example.com')).toEqual(user);
       expect(() => Auth.login('  JOHN@EXAMPLE.COM  ', 'password123')).not.toThrow();
+    });
+
+    it('should identify profiles that need phone or name completion', () => {
+      expect(Auth.hasCompleteProfile({ name: 'Jane', phone: '081234567890' })).toBe(true);
+      expect(Auth.hasCompleteProfile({ name: 'Jane', phone: '' })).toBe(false);
+      expect(Auth.hasCompleteProfile({ name: '', phone: '081234567890' })).toBe(false);
     });
   });
 
   describe('Login', () => {
     beforeEach(() => {
-      Auth.reg('Test User', 'test@example.com', 'password123');
+      Auth.reg('Test User', 'test@example.com', '081234567890', 'password123');
     });
 
     it('should login successfully with correct credentials', () => {
@@ -66,7 +81,7 @@ describe('Auth Module', () => {
 
   describe('Session Check', () => {
     it('should restore session if valid', () => {
-      Auth.reg('Test', 'test@example.com', 'pass123');
+      Auth.reg('Test', 'test@example.com', '081234567890', 'pass123');
       Auth.login('test@example.com', 'pass123');
       
       // Simulate reload
@@ -77,7 +92,7 @@ describe('Auth Module', () => {
     });
 
     it('should reject a cached user when the persisted session is missing', () => {
-      Auth.reg('Test', 'test@example.com', 'pass123');
+      Auth.reg('Test', 'test@example.com', '081234567890', 'pass123');
       Auth.login('test@example.com', 'pass123');
       DB.clrSes();
 
@@ -88,7 +103,7 @@ describe('Auth Module', () => {
 
   describe('Logout', () => {
     it('should clear the persisted session and current user', () => {
-      Auth.reg('Test', 'test@example.com', 'pass123');
+      Auth.reg('Test', 'test@example.com', '081234567890', 'pass123');
       Auth.login('test@example.com', 'pass123');
 
       Auth.logout();

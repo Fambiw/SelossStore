@@ -1,5 +1,5 @@
 import { DB } from './db.js';
-import { hs, gid, vEmail } from './utils.js';
+import { hs, gid, vEmail, vWA, nWA } from './utils.js';
 import { SupabaseAuth, isSupabaseConfigured } from './supabase.js';
 
 function isLocalAuthTest() {
@@ -11,13 +11,16 @@ const PRIMARY_ADMIN_EMAIL = 'swalloww32@gmail.com';
 export const Auth = {
   cu: null, // Current user
   
-  reg(name, email, pw) {
+  reg(name, email, phone, pw) {
     const safeName = String(name ?? '').trim();
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const safePhone = typeof phone === 'string' ? phone.trim() : '';
     const safePw = typeof pw === 'string' ? pw : '';
 
     if (!safeName) throw new Error('Nama tidak boleh kosong');
     if (!vEmail(safeEmail)) throw new Error('Format email tidak valid');
+    if (!safePhone) throw new Error('Nomor telepon atau WhatsApp wajib diisi');
+    if (!vWA(safePhone)) throw new Error('Format nomor telepon tidak valid. Gunakan 08xxx atau 628xxx');
     if (safePw.length < 6) throw new Error('Password minimal 6 karakter');
     if (DB.findU(safeEmail)) throw new Error('Email sudah terdaftar');
 
@@ -27,13 +30,13 @@ export const Auth = {
 
     // Jika Supabase aktif, daftarkan akun langsung ke Supabase Auth
     if (isSupabaseConfigured()) {
-      return SupabaseAuth.register(safeName, safeEmail, safePw).then(({ user }) => {
+      return SupabaseAuth.register(safeName, safeEmail, nWA(safePhone), safePw).then(({ user }) => {
         const u = {
           id: user?.id,
           name: safeName,
           email: safeEmail,
           passwordHash: '',
-          phone: '',
+          phone: nWA(safePhone),
           avatar: safeName[0].toUpperCase(),
           role: 'user',
           createdAt: new Date().toISOString()
@@ -57,7 +60,7 @@ export const Auth = {
       name: safeName,
       email: safeEmail,
       passwordHash: hs(safePw),
-      phone: '',
+      phone: nWA(safePhone),
       avatar: safeName[0].toUpperCase(),
       role: 'user',
       createdAt: new Date().toISOString()
@@ -102,7 +105,7 @@ export const Auth = {
         name: displayName,
         email: safeEmail,
         passwordHash: '',
-        phone: profile?.phone || '',
+        phone: profile?.phone || user.user_metadata?.phone || '',
         avatar: (profile?.name || safeEmail)[0].toUpperCase(),
         role: profile?.role === 'admin' ? 'admin' : 'user',
         createdAt: user.created_at || new Date().toISOString()
@@ -184,5 +187,14 @@ export const Auth = {
   
   isAdm() {
     return this.cu?.role === 'admin';
+  },
+
+  hasCompleteProfile(user = this.cu) {
+    return Boolean(
+      user &&
+      typeof user.name === 'string' &&
+      user.name.trim() &&
+      vWA(user.phone)
+    );
   }
 };
