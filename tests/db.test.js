@@ -32,6 +32,29 @@ describe('DB - LocalStorage Wrapper', () => {
       expect(users.length).toBe(1);
       expect(users[0].role).toBe('admin');
     });
+
+    it('should remove legacy demo accounts and clear their persisted session', () => {
+      DB.upsertU({ id: 'admin_001', email: 'old-admin@example.com' });
+      DB.upsertU({ id: 'user_001', email: 'sample-member@example.com' });
+      DB.upsertU({ id: 'u_real', email: 'real-member@example.com' });
+      DB.setSes({ userId: 'admin_001', token: 'legacy-token' });
+
+      expect(DB.removeDemoUsers()).toBe(2);
+      expect(DB.users().map(user => user.id)).toEqual(['u_real']);
+      expect(DB.ses()).toBeNull();
+    });
+
+    it('should preserve a real user session while removing demo accounts', () => {
+      DB.upsertU({ id: 'user_002', email: 'sample-member@example.com' });
+      DB.upsertU({ id: 'u_real', email: 'real-member@example.com' });
+      const session = { userId: 'u_real', token: 'real-token' };
+      DB.setSes(session);
+
+      DB.removeDemoUsers();
+
+      expect(DB.users().map(user => user.id)).toEqual(['u_real']);
+      expect(DB.ses()).toEqual(session);
+    });
   });
 
   describe('Session Operations', () => {

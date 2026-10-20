@@ -1,6 +1,20 @@
 import { sampleProds, sampleBanners } from './sample-data.js';
 import { SupabaseDB, isSupabaseConfigured } from './supabase.js';
 
+const DEMO_USER_IDS = new Set([
+  'admin_001',
+  'user_001',
+  'user_002',
+  'user_003',
+  'user_004',
+  'user_005',
+  'user_006',
+  'user_007',
+  'user_008',
+  'user_009',
+  'user_010',
+]);
+
 export const DB = {
   g(k, d = null) {
     try { 
@@ -38,6 +52,15 @@ export const DB = {
       us.push(user);
     }
     this.saveUsers(us);
+  },
+  removeDemoUsers() {
+    const users = this.users();
+    const remainingUsers = users.filter(user => !user || !DEMO_USER_IDS.has(user.id));
+    if (DEMO_USER_IDS.has(this.ses()?.userId)) this.clrSes();
+    if (remainingUsers.length !== users.length && !this.s('sl_users', remainingUsers)) {
+      throw new Error('Gagal membersihkan akun demo dari penyimpanan lokal');
+    }
+    return users.length - remainingUsers.length;
   },
   
   ses() { return this.g('sl_ses'); },

@@ -99,42 +99,4 @@ describe('Auth Module', () => {
     });
   });
 
-  describe('Predefined Admin & User Accounts', () => {
-    const { sampleUsers } = require('../js/sample-data.js');
-
-    beforeEach(() => {
-      sampleUsers().forEach(u => DB.upsertU(u));
-    });
-
-    it('should seed admin and 10 user accounts properly', () => {
-      const users = sampleUsers();
-      expect(users.length).toBe(11);
-      
-      const admin = users.find(u => u.role === 'admin');
-      expect(admin).toBeDefined();
-      expect(admin.email).toBe('adminseloss@gmail.com');
-
-      for (let i = 1; i <= 10; i++) {
-        const u = users.find(item => item.email === `user${i}seloss@gmail.com`);
-        expect(u).toBeDefined();
-        expect(u.role).toBe('user');
-      }
-    });
-
-    it('should login admin with adminseloss@gmail.com and Hanyaadmin123', () => {
-      const admin = Auth.login('adminseloss@gmail.com', 'Hanyaadmin123');
-      expect(admin.role).toBe('admin');
-      expect(Auth.cu.email).toBe('adminseloss@gmail.com');
-    });
-
-    it('should login all 10 user accounts with Masuk123', () => {
-      for (let i = 1; i <= 10; i++) {
-        const email = `user${i}seloss@gmail.com`;
-        const user = Auth.login(email, 'Masuk123');
-        expect(user.role).toBe('user');
-        expect(Auth.cu.email).toBe(email);
-      }
-    });
-  });
 });
-

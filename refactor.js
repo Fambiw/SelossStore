@@ -88,7 +88,6 @@ window.startCo = typeof startCo !== 'undefined' ? startCo : null;
 window.coBk = typeof coBk !== 'undefined' ? coBk : null;
 window.coSelVar = typeof coSelVar !== 'undefined' ? coSelVar : null;
 window.coNext = typeof coNext !== 'undefined' ? coNext : null;
-window.demoLogin = typeof demoLogin !== 'undefined' ? demoLogin : null;
 window.doLogin = typeof doLogin !== 'undefined' ? doLogin : null;
 window.doReg = typeof doReg !== 'undefined' ? doReg : null;
 window.tglPw = typeof tglPw !== 'undefined' ? tglPw : null;

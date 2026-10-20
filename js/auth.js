@@ -2,6 +2,10 @@ import { DB } from './db.js';
 import { hs, gid, vEmail } from './utils.js';
 import { SupabaseAuth, isSupabaseConfigured } from './supabase.js';
 
+function isLocalAuthTest() {
+  return typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+}
+
 export const Auth = {
   cu: null, // Current user
   
@@ -15,6 +19,10 @@ export const Auth = {
     if (safePw.length < 6) throw new Error('Password minimal 6 karakter');
     if (DB.findU(safeEmail)) throw new Error('Email sudah terdaftar');
 
+    if (!isSupabaseConfigured() && !isLocalAuthTest()) {
+      throw new Error('Autentikasi Supabase belum dikonfigurasi');
+    }
+
     // Jika Supabase aktif, daftarkan akun langsung ke Supabase Auth
     if (isSupabaseConfigured()) {
       return SupabaseAuth.register(safeName, safeEmail, safePw).then(({ user }) => {
@@ -22,7 +30,7 @@ export const Auth = {
           id: user?.id || gid('u'),
           name: safeName,
           email: safeEmail,
-          passwordHash: hs(safePw),
+          passwordHash: '',
           phone: '',
           avatar: safeName[0].toUpperCase(),
           role: 'user',
@@ -59,13 +67,12 @@ export const Auth = {
   login(email, pw, rem = false) {
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const safePw = typeof pw === 'string' ? pw : '';
-    
-    const localU = DB.findU(safeEmail);
-    if (localU) {
-      if (localU.passwordHash !== hs(safePw)) {
-        throw new Error('Password salah');
-      }
-      
+
+    if (isLocalAuthTest()) {
+      const localU = DB.findU(safeEmail);
+      if (!localU) throw new Error('Email tidak terdaftar');
+      if (localU.passwordHash !== hs(safePw)) throw new Error('Password salah');
+
       const session = {
         userId: localU.id,
         token: gid('tok'),
@@ -73,56 +80,51 @@ export const Auth = {
         loginAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
       };
-      
+
       DB.setSes(session);
       this.cu = localU;
-
-      // Sinkronkan sesi ke Supabase di background jika bukan akun demo lokal
-      if (isSupabaseConfigured() && !localU.id.startsWith('user_') && localU.id !== 'admin_001') {
-        SupabaseAuth.login(safeEmail, safePw).catch(() => {});
-      }
-
       return localU;
     }
 
-    // Jika user belum ada di cache lokal, cek langsung ke Supabase Auth
-    if (isSupabaseConfigured()) {
-      return SupabaseAuth.login(safeEmail, safePw).then(({ user, profile }) => {
-        if (!user) throw new Error('Email tidak terdaftar');
-        const u = {
-          id: user.id,
-          name: profile?.name || user.user_metadata?.name || safeEmail.split('@')[0],
-          email: safeEmail,
-          passwordHash: hs(safePw),
-          phone: profile?.phone || '',
-          avatar: (profile?.name || safeEmail)[0].toUpperCase(),
-          role: profile?.role || 'user',
-          createdAt: user.created_at || new Date().toISOString()
-        };
-        DB.upsertU(u);
-        const session = {
-          userId: u.id,
-          token: gid('tok'),
-          rememberMe: rem,
-          loginAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
-        };
-        DB.setSes(session);
-        this.cu = u;
-        return u;
-      }).catch(err => {
-        const msg = err.message || '';
-        if (msg.includes('Email not confirmed')) {
-          throw new Error('Email belum dikonfirmasi. Silakan periksa inbox email Anda, atau matikan "Confirm email" di dashboard Supabase -> Authentication -> Providers -> Email.');
-        }
-        if (msg.includes('Invalid login credentials')) {
-          throw new Error('Email atau password salah');
-        }
-        throw new Error(msg || 'Email tidak terdaftar');
-      });
+    if (!isSupabaseConfigured()) {
+      throw new Error('Autentikasi Supabase belum dikonfigurasi');
     }
 
-    throw new Error('Email tidak terdaftar');
+    return SupabaseAuth.login(safeEmail, safePw).then(async ({ user, session }) => {
+      if (!user) throw new Error('Email tidak terdaftar');
+      const profile = await SupabaseAuth.getProfile(user.id);
+      const displayName = profile?.name || user.user_metadata?.name || safeEmail.split('@')[0];
+      const u = {
+        id: user.id,
+        name: displayName,
+        email: safeEmail,
+        passwordHash: '',
+        phone: profile?.phone || '',
+        avatar: (profile?.name || safeEmail)[0].toUpperCase(),
+        role: profile?.role === 'admin' ? 'admin' : 'user',
+        createdAt: user.created_at || new Date().toISOString()
+      };
+      DB.upsertU(u);
+      const appSession = {
+        userId: u.id,
+        token: session?.access_token || gid('tok'),
+        rememberMe: rem,
+        loginAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
+      };
+      DB.setSes(appSession);
+      this.cu = u;
+      return u;
+    }).catch(err => {
+      const msg = err.message || '';
+      if (msg.includes('Email not confirmed')) {
+        throw new Error('Email belum dikonfirmasi. Silakan periksa inbox email Anda, atau matikan "Confirm email" di dashboard Supabase -> Authentication -> Providers -> Email.');
+      }
+      if (msg.includes('Invalid login credentials')) {
+        throw new Error('Email atau password salah');
+      }
+      throw new Error(msg || 'Email tidak terdaftar');
+    });
   },
   
   logout() {

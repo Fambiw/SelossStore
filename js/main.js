@@ -3,7 +3,7 @@
 
 import { CFG, PMETHODS, STLBLS } from './config.js';
 import { hs, gid, generateOrderId, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
-import { sampleProds, sampleBanners, sampleUsers } from './sample-data.js';
+import { sampleProds, sampleBanners } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
@@ -171,16 +171,16 @@ function buildWA(p, v, cd){
   const totalText = fmt(v?.p || 0);
 
   return [
-    'Halo admin, segera diproses ya pesananku...',
+    '𝕄𝕠𝕙𝕠𝕟 𝕓𝕒𝕟𝕥𝕦 𝕡𝕣𝕠𝕤𝕖𝕤 𝕡𝕖𝕤𝕒𝕟𝕒𝕟 𝕤𝕒𝕪𝕒 𝕪𝕒.',
     '',
-    'Rincian pesanan:',
-    `Nama pelanggan: ${customerName}`,
-    `Nama aplikasi: ${appName}`,
-    `Detail aplikasi: ${productDetail}`,
+    '📋 RINCIAN PESANAN',
+    `Nᴀᴍᴀ: ${customerName}`,
+    `Aᴘʟɪᴋᴀsɪ: ${appName}`,
+    `Dᴜʀᴀsɪ: ${productDetail}`,
     '',
-    `Total pembayaran: ${totalText}`,
+    `Tᴏᴛᴀʟ: ${totalText}`,
     '',
-    'Terima Kasih Adminnn......'
+    '𝕋𝕖𝕣𝕚𝕞𝕒 𝕜𝕒𝕤𝕚𝕙, 𝔸𝕕𝕞𝕚𝕟. 𝔻𝕚𝕥𝕦𝕟𝕘𝕘𝕦 𝕡𝕣𝕠𝕤𝕖𝕤𝕟𝕪𝕒! 🙏'
   ].join('\n');
 }
 
@@ -923,20 +923,6 @@ function doForg(){
   if(ro){ro.classList.add('show');ro.innerHTML=`<i class="bi bi-check-circle" aria-hidden="true"></i> Akun ditemukan! Nama: <strong>${esc(u.name)}</strong><br><span style="font-size:.78rem;opacity:.75">Silakan hubungi admin WA untuk reset password.</span><br><a href="https://wa.me/${CFG.adminWA}?text=${encodeURIComponent('Halo Admin, saya lupa password akun Seloss Store email: '+em)}" target="_blank" style="color:#2563EB;font-weight:600"><i class="bi bi-chat-dots" aria-hidden="true"></i> Chat Admin WA</a>`}
 }
 
-function demoLogin(role){
-  try{
-    if(role==='admin'){Auth.login(CFG.adminEmail,'Hanyaadmin123',true)}
-    else{
-      if(!DB.findU('user1seloss@gmail.com')){
-        const u1 = sampleUsers().find(u => u.id === 'user_001');
-        if (u1) DB.upsertU(u1);
-      }
-      Auth.login('user1seloss@gmail.com','Masuk123',true);
-    }
-    toast('Login berhasil! Selamat menjelajah','success');R.go('home');
-  }catch(e){toast(e.message,'error')}
-}
-
 // ── HOME ─────────────────────────────────────────────────────
 function filterCat(c){St.cat=c;R.go('home')}
 function openProd(id){openPriceModal(id)}
@@ -1558,20 +1544,12 @@ function copyT(text) {
 //  INIT
 // ============================================================
 function initApp() {
-  console.log('[DEBUG] initApp starting. Current users:', DB.users().map(u => u.email));
-  // Seed sample users (admin & 10 default user accounts)
-  sampleUsers().forEach(u => {
-    const existing = DB.findU(u.email) || DB.findById(u.id);
-    if (!existing) {
-      console.log('[DEBUG] Seeding new user:', u.email);
-      DB.upsertU(u);
-    } else if (existing.id === u.id) {
-      console.log('[DEBUG] Syncing existing predefined user:', u.email);
-      // Sync credentials & role for predefined accounts
-      DB.upsertU({ ...existing, email: u.email, passwordHash: u.passwordHash, role: u.role });
-    }
-  });
-  console.log('[DEBUG] initApp finished. Users in DB:', DB.users().map(u => u.email));
+  try {
+    DB.removeDemoUsers();
+  } catch (err) {
+    console.error('[Auth] Gagal membersihkan akun demo lokal:', err);
+    DB.clrSes();
+  }
 
   // Seed products if not yet stored
   DB.prods();
@@ -1592,7 +1570,6 @@ function initApp() {
 
   // ── Expose ALL functions to window for inline HTML event handlers ──
   window.R                 = R;
-  window.sampleUsers       = sampleUsers;
   window.tglSB             = tglSB;
   window.closeSB           = closeSB;
   window.gocat             = gocat;
@@ -1621,7 +1598,6 @@ function initApp() {
   window.handleProofFile        = handleProofFile;
   window.submitProofAndContinue = submitProofAndContinue;
   window.downloadCurrentQr      = downloadCurrentQr;
-  window.demoLogin         = demoLogin;
   window.doLogin           = doLogin;
   window.doReg             = doReg;
   window.tglPw             = tglPw;
@@ -2331,7 +2307,8 @@ async function checkOAuthCallback() {
       if (user && user.email) {
         console.log('✅ [Google OAuth] Berhasil autentikasi Google:', user.email);
         const safeEmail = user.email.toLowerCase();
-        const rawName = user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];
+        const profile = await SupabaseAuth.getProfile(user.id);
+        const rawName = profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];
         const avatar = user.user_metadata?.avatar_url || (rawName[0] || 'G').toUpperCase();
 
         const u = {
@@ -2339,9 +2316,9 @@ async function checkOAuthCallback() {
           name: rawName,
           email: safeEmail,
           passwordHash: '',
-          phone: user.phone || '',
+          phone: profile?.phone || user.phone || '',
           avatar: avatar,
-          role: 'user',
+          role: profile?.role === 'admin' ? 'admin' : 'user',
           createdAt: user.created_at || new Date().toISOString(),
         };
 
