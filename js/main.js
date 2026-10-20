@@ -7,6 +7,7 @@ import { sampleProds, sampleBanners, sampleUsers } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
+import { SupabaseDB, SupabaseAuth, getSupabase } from './supabase.js';
 
 // Expose shared modules to window for inline HTML handlers
 window.Auth = Auth;
@@ -15,6 +16,9 @@ window.St = St;
 window.fmt = fmt;
 window.esc = esc;
 window.disc = disc;
+window.SupabaseDB = SupabaseDB;
+window.SupabaseAuth = SupabaseAuth;
+window.getSupabase = getSupabase;
 
 // ── TOAST ────────────────────────────────────────────────────
 export function toast(msg, type = 'success', dur = 3500) {
@@ -866,18 +870,27 @@ function tglPw(id,btn){const i=$(id);i.type=i.type==='password'?'text':'password
 function shAErr(id,msg){const el=$(id);if(el){el.textContent=msg;el.classList.add('show')}}
 function hiAErr(id){const el=$(id);if(el)el.classList.remove('show')}
 
-function doLogin(){
+async function doLogin(){
   const em=$('le-em')?.value.trim(),pw=$('le-pw')?.value,rem=$('le-rem')?.checked;
   hiAErr('le');
-  try{Auth.login(em,pw,rem);toast('Selamat datang, '+Auth.cu.name,'success');R.go('home')}
+  try{
+    await Auth.login(em,pw,rem);
+    toast('Selamat datang, '+(Auth.cu?.name || 'Pelanggan'),'success');
+    R.go('home');
+  }
   catch(e){shAErr('le',e.message)}
 }
 
-function doReg(){
+async function doReg(){
   const nm=$('re-nm')?.value,em=$('re-em')?.value,pw=$('re-pw')?.value,cf=$('re-cf')?.value;
   hiAErr('re');
   if(pw!==cf){shAErr('re','Password dan konfirmasi tidak cocok');return}
-  try{Auth.reg(nm,em,pw);Auth.login(em,pw,false);toast('Akun berhasil dibuat! Selamat bergabung','success');R.go('home')}
+  try{
+    await Auth.reg(nm,em,pw);
+    await Auth.login(em,pw,false);
+    toast('Akun berhasil dibuat! Selamat bergabung','success');
+    R.go('home');
+  }
   catch(e){shAErr('re',e.message)}
 }
 
@@ -1542,6 +1555,11 @@ function initApp() {
 
   // Seed products if not yet stored
   DB.prods();
+
+  // Sinkronisasi data cloud dengan Supabase (Produk, Banner, Transaksi)
+  if (typeof DB.syncWithSupabase === 'function') {
+    DB.syncWithSupabase().catch(err => console.warn('[Supabase Sync Error]', err));
+  }
 
   // Register Service Worker
   if ('serviceWorker' in navigator) {

@@ -1,5 +1,6 @@
 import { DB } from './db.js';
 import { hs, gid, vEmail } from './utils.js';
+import { SupabaseAuth, isSupabaseConfigured } from './supabase.js';
 
 export const Auth = {
   cu: null, // Current user
@@ -26,34 +27,92 @@ export const Auth = {
     };
     
     DB.upsertU(u);
+
+    // Kirim pendaftaran akun ke Supabase Auth jika terkonfigurasi
+    if (isSupabaseConfigured()) {
+      SupabaseAuth.register(safeName, safeEmail, safePw).then(res => {
+        if (res?.user?.id && res.user.id !== u.id) {
+          u.id = res.user.id;
+          DB.upsertU(u);
+        }
+      }).catch(err => {
+        console.warn('[Supabase Auth] Notice:', err.message);
+      });
+    }
+
     return u;
   },
   
   login(email, pw, rem = false) {
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const safePw = typeof pw === 'string' ? pw : '';
-    console.log('[DEBUG] Auth.login called with email:', email, '-> safeEmail:', safeEmail);
-    const users = DB.users();
-    console.log('[DEBUG] DB.users() count:', users.length, 'users:', users.map(u => ({ id: u.id, email: u.email })));
-    const u = DB.findU(safeEmail);
-    console.log('[DEBUG] DB.findU result:', u);
-    if (!u) throw new Error('Email tidak terdaftar');
-    if (u.passwordHash !== hs(safePw)) throw new Error('Password salah');
     
-    const session = {
-      userId: u.id,
-      token: gid('tok'),
-      rememberMe: rem,
-      loginAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
-    };
-    
-    DB.setSes(session);
-    this.cu = u;
-    return u;
+    const localU = DB.findU(safeEmail);
+    if (localU) {
+      if (localU.passwordHash !== hs(safePw)) {
+        throw new Error('Password salah');
+      }
+      
+      const session = {
+        userId: localU.id,
+        token: gid('tok'),
+        rememberMe: rem,
+        loginAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
+      };
+      
+      DB.setSes(session);
+      this.cu = localU;
+
+      // Sinkronkan sesi ke Supabase di background jika bukan akun demo lokal
+      if (isSupabaseConfigured() && !localU.id.startsWith('user_') && localU.id !== 'admin_001') {
+        SupabaseAuth.login(safeEmail, safePw).catch(() => {});
+      }
+
+      return localU;
+    }
+
+    // Jika user belum ada di cache lokal, cek langsung ke Supabase Auth
+    if (isSupabaseConfigured()) {
+      return SupabaseAuth.login(safeEmail, safePw).then(({ user, profile }) => {
+        if (!user) throw new Error('Email tidak terdaftar');
+        const u = {
+          id: user.id,
+          name: profile?.name || user.user_metadata?.name || safeEmail.split('@')[0],
+          email: safeEmail,
+          passwordHash: hs(safePw),
+          phone: profile?.phone || '',
+          avatar: (profile?.name || safeEmail)[0].toUpperCase(),
+          role: profile?.role || 'user',
+          createdAt: user.created_at || new Date().toISOString()
+        };
+        DB.upsertU(u);
+        const session = {
+          userId: u.id,
+          token: gid('tok'),
+          rememberMe: rem,
+          loginAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
+        };
+        DB.setSes(session);
+        this.cu = u;
+        return u;
+      }).catch(err => {
+        const msg = err.message || '';
+        if (msg.includes('Invalid login credentials')) {
+          throw new Error('Email atau password salah');
+        }
+        throw new Error(msg || 'Email tidak terdaftar');
+      });
+    }
+
+    throw new Error('Email tidak terdaftar');
   },
   
   logout() {
+    if (isSupabaseConfigured()) {
+      SupabaseAuth.logout().catch(() => {});
+    }
     DB.clrSes();
     this.cu = null;
   },
