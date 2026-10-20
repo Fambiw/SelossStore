@@ -7,7 +7,7 @@ import { sampleProds, sampleBanners, sampleUsers } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
-import { SupabaseDB, SupabaseAuth, getSupabase } from './supabase.js';
+import { SupabaseDB, SupabaseAuth, getSupabase, SUPABASE_CONFIG } from './supabase.js';
 
 // Expose shared modules to window for inline HTML handlers
 window.Auth = Auth;
@@ -19,6 +19,7 @@ window.disc = disc;
 window.SupabaseDB = SupabaseDB;
 window.SupabaseAuth = SupabaseAuth;
 window.getSupabase = getSupabase;
+window.loginWithGoogle = loginWithGoogle;
 
 // ── TOAST ────────────────────────────────────────────────────
 export function toast(msg, type = 'success', dur = 3500) {
@@ -217,6 +218,8 @@ const Pages={
     <div class="aig"><label>Password</label><div class="aii-wrap"><i class="bi bi-lock-fill aii-ico"></i><input class="aii" id="le-pw" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="aii-pw" type="button" onclick="tglPw('le-pw',this)"><i class="bi bi-eye-fill"></i></button></div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><label class="a-rem"><input type="checkbox" id="le-rem"> Ingat saya</label><a href="#" class="a-lnk" onclick="R.go('forgot');return false" style="font-size:.8rem">Lupa password?</a></div>
     <button class="a-btn pulse" onclick="doLogin()"><i class="bi bi-box-arrow-in-right"></i> Masuk Sekarang</button>
+    <div class="a-divider"><span>atau</span></div>
+    <button class="a-btn-google" type="button" onclick="loginWithGoogle()"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg><span>Masuk dengan Google</span></button>
   </div>`},
 
   regH(){return`<div class="ac fade-in">
@@ -229,6 +232,8 @@ const Pages={
     <div class="aig"><label>Password <span style="font-size:.72rem;color:rgba(255,255,255,.3)">(min. 6 karakter)</span></label><div class="aii-wrap"><i class="bi bi-lock-fill aii-ico"></i><input class="aii" id="re-pw" type="password" placeholder="Buat password kuat" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()"><button class="aii-pw" type="button" onclick="tglPw('re-pw',this)"><i class="bi bi-eye-fill"></i></button></div></div>
     <div class="aig"><label>Konfirmasi Password</label><div class="aii-wrap"><i class="bi bi-shield-lock-fill aii-ico"></i><input class="aii" id="re-cf" type="password" placeholder="Ulangi password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()"><button class="aii-pw" type="button" onclick="tglPw('re-cf',this)"><i class="bi bi-eye-fill"></i></button></div></div>
     <button class="a-btn pulse" onclick="doReg()"><i class="bi bi-person-plus-fill"></i> Daftar Sekarang</button>
+    <div class="a-divider"><span>atau</span></div>
+    <button class="a-btn-google" type="button" onclick="loginWithGoogle()"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg><span>Daftar dengan Google</span></button>
     <div class="a-ft">Sudah punya akun? <a href="#" class="a-lnk" onclick="R.go('login');return false">Masuk</a></div>
   </div>`},
 
@@ -892,6 +897,15 @@ async function doReg(){
     R.go('home');
   }
   catch(e){shAErr('re',e.message)}
+}
+
+async function loginWithGoogle(){
+  try{
+    toast('Menghubungkan ke Google...', 'info');
+    await SupabaseAuth.signInWithGoogle();
+  }catch(e){
+    toast('Gagal login Google: ' + e.message, 'error');
+  }
 }
 
 function doForg(){
@@ -2250,11 +2264,101 @@ function admBannerDelConfirm(id){
   window.admBannerDel        = admBannerDel;
   window.admBannerDelConfirm = admBannerDelConfirm;
 
-  // Hide loading screen & navigate to home
+  // Handle OAuth callback jika baru redirect dari Google
+  checkOAuthCallback().then(u => {
+    if (u) {
+      toast(`Selamat datang, ${u.name}!`, 'success');
+      $('ls')?.classList.add('hide');
+      R.go('home');
+    }
+  }).catch(() => {});
+
+  // Hide loading screen & navigate to home jika bukan OAuth callback
   setTimeout(() => {
-    $('ls')?.classList.add('hide');
-    R.go('home');
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (!hash.includes('access_token=') && !search.includes('code=')) {
+      $('ls')?.classList.add('hide');
+      R.go('home');
+    }
   }, 1400);
+}
+
+// ── OAuth Callback Handler ──────────────────────────────────
+async function checkOAuthCallback() {
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+
+  if (hash.includes('access_token=') || search.includes('code=')) {
+    console.log('🔄 [Google OAuth] Mendeteksi token callback...');
+    try {
+      let user = null;
+      let accessToken = null;
+
+      // 1. Coba getSession dari Supabase SDK jika aktif
+      const sb = await getSupabase();
+      if (sb) {
+        const { data } = await sb.auth.getSession();
+        if (data?.session?.user) {
+          user = data.session.user;
+          accessToken = data.session.access_token;
+        }
+      }
+
+      // 2. Parse manual hash token jika SDK belum parse
+      if (!user && hash.includes('access_token=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        accessToken = params.get('access_token');
+        if (accessToken) {
+          const uRes = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/user`, {
+            headers: {
+              apikey: SUPABASE_CONFIG.anonKey,
+              Authorization: `Bearer ${accessToken}`,
+            },
+          });
+          if (uRes.ok) {
+            user = await uRes.json();
+          }
+        }
+      }
+
+      if (user && user.email) {
+        console.log('✅ [Google OAuth] Berhasil autentikasi Google:', user.email);
+        const safeEmail = user.email.toLowerCase();
+        const rawName = user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];
+        const avatar = user.user_metadata?.avatar_url || (rawName[0] || 'G').toUpperCase();
+
+        const u = {
+          id: user.id,
+          name: rawName,
+          email: safeEmail,
+          passwordHash: '',
+          phone: user.phone || '',
+          avatar: avatar,
+          role: 'user',
+          createdAt: user.created_at || new Date().toISOString(),
+        };
+
+        DB.upsertU(u);
+        const session = {
+          userId: u.id,
+          token: accessToken || gid('tok'),
+          rememberMe: true,
+          loginAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(),
+        };
+        DB.setSes(session);
+        Auth.cu = u;
+
+        // Bersihkan token dari URL bar
+        window.history.replaceState(null, '', window.location.pathname);
+        return u;
+      }
+    } catch (err) {
+      console.error('❌ [Google OAuth] Error memproses login:', err);
+    }
+  }
+  return null;
 }
 
 // Single DOMContentLoaded — entry point

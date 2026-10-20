@@ -14,7 +14,33 @@ export const Auth = {
     if (!vEmail(safeEmail)) throw new Error('Format email tidak valid');
     if (safePw.length < 6) throw new Error('Password minimal 6 karakter');
     if (DB.findU(safeEmail)) throw new Error('Email sudah terdaftar');
-    
+
+    // Jika Supabase aktif, daftarkan akun langsung ke Supabase Auth
+    if (isSupabaseConfigured()) {
+      return SupabaseAuth.register(safeName, safeEmail, safePw).then(({ user }) => {
+        const u = {
+          id: user?.id || gid('u'),
+          name: safeName,
+          email: safeEmail,
+          passwordHash: hs(safePw),
+          phone: '',
+          avatar: safeName[0].toUpperCase(),
+          role: 'user',
+          createdAt: new Date().toISOString()
+        };
+        DB.upsertU(u);
+        console.log('✅ [Supabase Auth] Berhasil terdaftar di Supabase Auth:', safeEmail, 'ID:', u.id);
+        return u;
+      }).catch(err => {
+        console.error('❌ [Supabase Auth] Error register:', err);
+        const msg = err.message || '';
+        if (msg.includes('already registered') || msg.includes('User already registered')) {
+          throw new Error('Email sudah terdaftar di Supabase');
+        }
+        throw new Error(msg || 'Gagal mendaftar akun di Supabase');
+      });
+    }
+
     const u = {
       id: gid('u'),
       name: safeName,
@@ -27,19 +53,6 @@ export const Auth = {
     };
     
     DB.upsertU(u);
-
-    // Kirim pendaftaran akun ke Supabase Auth jika terkonfigurasi
-    if (isSupabaseConfigured()) {
-      SupabaseAuth.register(safeName, safeEmail, safePw).then(res => {
-        if (res?.user?.id && res.user.id !== u.id) {
-          u.id = res.user.id;
-          DB.upsertU(u);
-        }
-      }).catch(err => {
-        console.warn('[Supabase Auth] Notice:', err.message);
-      });
-    }
-
     return u;
   },
   
@@ -99,6 +112,9 @@ export const Auth = {
         return u;
       }).catch(err => {
         const msg = err.message || '';
+        if (msg.includes('Email not confirmed')) {
+          throw new Error('Email belum dikonfirmasi. Silakan periksa inbox email Anda, atau matikan "Confirm email" di dashboard Supabase -> Authentication -> Providers -> Email.');
+        }
         if (msg.includes('Invalid login credentials')) {
           throw new Error('Email atau password salah');
         }
