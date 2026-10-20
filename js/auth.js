@@ -93,7 +93,7 @@ export const Auth = {
       throw new Error('Autentikasi Supabase belum dikonfigurasi');
     }
 
-    return SupabaseAuth.login(safeEmail, safePw).then(async ({ user, session }) => {
+    return SupabaseAuth.login(safeEmail, safePw).then(async ({ user }) => {
       if (!user) throw new Error('Email tidak terdaftar');
       const profile = await SupabaseAuth.getProfile(user.id);
       const displayName = profile?.name || user.user_metadata?.name || safeEmail.split('@')[0];
@@ -110,7 +110,6 @@ export const Auth = {
       DB.upsertU(u);
       const appSession = {
         userId: u.id,
-        token: session?.access_token || gid('tok'),
         rememberMe: rem,
         loginAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()

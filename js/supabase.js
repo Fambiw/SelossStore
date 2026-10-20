@@ -179,6 +179,33 @@ export const SupabaseAuth = {
     return { user: data.user, session: data };
   },
 
+  async requestPasswordReset(email) {
+    if (!isSupabaseConfigured()) throw new Error('Supabase belum dikonfigurasi');
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Silakan coba lagi.');
+
+    const redirectTo = `${window.location.origin}${window.location.pathname}?auth=reset-password`;
+    const { error } = await sb.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
+    if (error) throw error;
+  },
+
+  async updatePassword(password) {
+    if (!isSupabaseConfigured()) throw new Error('Supabase belum dikonfigurasi');
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Silakan coba lagi.');
+
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (!sessionData?.session?.user) {
+      throw new Error('Sesi verifikasi tidak tersedia. Minta tautan reset password yang baru.');
+    }
+
+    const { data, error } = await sb.auth.updateUser({ password });
+    if (error) throw error;
+    if (!data?.user) throw new Error('Supabase tidak mengonfirmasi perubahan password');
+    return data.user;
+  },
+
   /**
    * Login atau Register via Google OAuth
    */

@@ -2,7 +2,7 @@
 //  SELOSS STORE — Main Application Script v1.0// ============================================================
 
 import { CFG, PMETHODS, STLBLS } from './config.js';
-import { hs, gid, generateOrderId, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
+import { gid, generateOrderId, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
 import { sampleProds, sampleBanners } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
@@ -213,6 +213,7 @@ const Pages={
     if(page==='login')c.innerHTML=this.loginH();
     else if(page==='register')c.innerHTML=this.regH();
     else if(page==='forgot')c.innerHTML=this.forgH();
+    else if(page==='reset-password')c.innerHTML=this.resetPasswordH();
   },
 
   loginH(){return`<div class="ac fade-in">
@@ -246,12 +247,23 @@ const Pages={
   forgH(){return`<div class="ac fade-in">
     <div class="alo"><span class="alo-t">Seloss Store</span></div>
     <div class="a-ttl">Reset Password</div>
-    <div class="a-sub">Masukkan email terdaftar untuk verifikasi akun kamu.</div>
+    <div class="a-sub">Masukkan email akun. Kami akan mengirim tautan verifikasi untuk membuat password baru.</div>
     <div class="a-err" id="fe"></div>
     <div class="a-ok" id="fo"></div>
-    <div class="aig"><label>Email Terdaftar</label><div class="aii-wrap"><i class="bi bi-envelope-fill aii-ico"></i><input class="aii" id="fe-em" type="email" placeholder="email@kamu.com" onkeydown="if(event.key==='Enter')doForg()"></div></div>
-    <button class="a-btn" onclick="doForg()"><i class="bi bi-search"></i> Cek Akun Saya</button>
+    <div class="aig"><label>Email Terdaftar</label><div class="aii-wrap"><i class="bi bi-envelope-fill aii-ico"></i><input class="aii" id="fe-em" type="email" placeholder="email@kamu.com" autocomplete="email" value="${esc(Auth.cu?.email||'')}" onkeydown="if(event.key==='Enter')doForg()"></div></div>
+    <button class="a-btn" id="btn-forgot" onclick="doForg()"><i class="bi bi-envelope"></i> Kirim Tautan Reset</button>
     <div class="a-ft"><a href="#" class="a-lnk" onclick="R.go('login');return false">← Kembali ke Login</a></div>
+  </div>`},
+
+  resetPasswordH(){return`<div class="ac fade-in">
+    <div class="alo"><span class="alo-t">Seloss Store</span></div>
+    <div class="a-ttl">Buat Password Baru</div>
+    <div class="a-sub">Tautan verifikasi email berhasil digunakan. Buat password baru untuk akun ini.</div>
+    <div class="a-err" id="rp-err"></div>
+    <div class="aig"><label>Password baru <span style="font-size:.72rem;color:rgba(255,255,255,.6)">(minimal 8 karakter)</span></label><div class="aii-wrap"><i class="bi bi-lock-fill aii-ico"></i><input class="aii" id="rp-pw" type="password" placeholder="Buat password kuat" autocomplete="new-password"></div></div>
+    <div class="aig"><label>Konfirmasi password baru</label><div class="aii-wrap"><i class="bi bi-shield-lock-fill aii-ico"></i><input class="aii" id="rp-confirm" type="password" placeholder="Ulangi password baru" autocomplete="new-password" onkeydown="if(event.key==='Enter')finishPasswordReset()"></div></div>
+    <button class="a-btn" id="btn-reset-password" onclick="finishPasswordReset()"><i class="bi bi-shield-check"></i> Simpan Password Baru</button>
+    <div class="a-ft">Setelah itu, lengkapi nama dan nomor kontak di halaman profil.</div>
   </div>`},
 
   // ── APP PAGES ────────────────────────────────────────────
@@ -533,25 +545,14 @@ const Pages={
           </div>
           <div class="profile-field full">
             <label for="ep-em">Email</label>
-            <input id="ep-em" type="email" autocomplete="email" value="${esc(u.email)}" required>
+            <input id="ep-em" type="email" autocomplete="email" value="${esc(u.email)}" readonly aria-describedby="profile-email-note">
+            <small id="profile-email-note" class="profile-notice">Email akun tidak dapat diganti dari profil.</small>
           </div>
         </div>
         <div class="profile-password-section">
           <h2>Ganti Password</h2>
-          <div class="profile-fields">
-            <div class="profile-field full">
-              <label for="ep-pwc">Password lama</label>
-              <input id="ep-pwc" type="password" autocomplete="current-password" placeholder="Masukkan password lama">
-            </div>
-            <div class="profile-field">
-              <label for="ep-pwn">Password baru</label>
-              <input id="ep-pwn" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter">
-            </div>
-            <div class="profile-field">
-              <label for="ep-pwn-confirm">Konfirmasi password baru</label>
-              <input id="ep-pwn-confirm" type="password" autocomplete="new-password" placeholder="Ulangi password baru">
-            </div>
-          </div>
+          <p class="profile-notice">Untuk keamanan, password diubah melalui tautan verifikasi yang dikirim ke email akun.</p>
+          <button type="button" class="profile-save" onclick="R.go('forgot')">Kirim tautan reset password</button>
         </div>
         <div class="profile-actions">
           <button type="button" onclick="R.go('home')">Batal</button>
@@ -896,13 +897,49 @@ async function loginWithGoogle(){
   }
 }
 
-function doForg(){
+async function doForg(){
   const em=$('fe-em')?.value.trim();
   hiAErr('fe');const ro=$('fo');if(ro)ro.classList.remove('show');
   if(!em||!vEmail(em)){shAErr('fe','Masukkan email yang valid');return}
-  const u=DB.findU(em);
-  if(!u){shAErr('fe','Email tidak ditemukan di sistem kami');return}
-  if(ro){ro.classList.add('show');ro.innerHTML=`<i class="bi bi-check-circle" aria-hidden="true"></i> Akun ditemukan! Nama: <strong>${esc(u.name)}</strong><br><span style="font-size:.78rem;opacity:.75">Silakan hubungi admin WA untuk reset password.</span><br><a href="https://wa.me/${CFG.adminWA}?text=${encodeURIComponent('Halo Admin, saya lupa password akun Seloss Store email: '+em)}" target="_blank" style="color:#2563EB;font-weight:600"><i class="bi bi-chat-dots" aria-hidden="true"></i> Chat Admin WA</a>`}
+  const button=$('btn-forgot');
+  if(button)button.disabled=true;
+  try{
+    await SupabaseAuth.requestPasswordReset(em);
+    if(ro){
+      ro.classList.add('show');
+      ro.textContent='Jika email tersebut terdaftar, tautan untuk membuat password baru akan dikirim. Periksa inbox dan folder spam.';
+    }
+  }catch(err){
+    console.error('[Auth] Gagal mengirim tautan reset password:',err);
+    shAErr('fe','Tautan reset tidak dapat dikirim. Periksa koneksi dan konfigurasi Supabase, lalu coba lagi.');
+  }finally{
+    if(button)button.disabled=false;
+  }
+}
+
+async function finishPasswordReset(){
+  hiAErr('rp-err');
+  const password=$('rp-pw')?.value||'';
+  const confirmation=$('rp-confirm')?.value||'';
+  if(password.length<8){shAErr('rp-err','Password baru minimal 8 karakter');return}
+  if(password!==confirmation){shAErr('rp-err','Konfirmasi password baru tidak cocok');return}
+
+  const button=$('btn-reset-password');
+  if(button)button.disabled=true;
+  try{
+    const user=await SupabaseAuth.updatePassword(password);
+    const localUser=Auth.cu;
+    if(!localUser||localUser.id!==user.id)throw new Error('Sesi akun berubah. Silakan login kembali.');
+    DB.upsertU({...localUser,email:user.email?.trim().toLowerCase()||localUser.email,passwordHash:''});
+    window.history.replaceState(null,'',window.location.pathname);
+    toast('Password berhasil diperbarui. Lengkapi data profil Anda.','success');
+    R.go('profile');
+  }catch(err){
+    console.error('[Auth] Gagal memperbarui password:',err);
+    shAErr('rp-err',err.message||'Tautan verifikasi tidak valid atau sudah kedaluwarsa. Minta tautan reset yang baru.');
+  }finally{
+    if(button)button.disabled=false;
+  }
 }
 
 // ── HOME ─────────────────────────────────────────────────────
@@ -1306,49 +1343,32 @@ function showTxD(txId){
 function closeTxM(){const m=$('tx-modal');if(m)m.classList.remove('show')}
 
 // ── PROFILE ───────────────────────────────────────────────────
-function saveProf(){
+async function saveProf(){
   const user=Auth.cu;
   if(!user){R.go('login');return}
   const name=$('ep-nm')?.value.trim()||'';
   const phoneInput=$('ep-ph')?.value.trim()||'';
-  const email=($('ep-em')?.value.trim()||'').toLowerCase();
-  const currentPassword=$('ep-pwc')?.value||'';
-  const newPassword=$('ep-pwn')?.value||'';
-  const confirmPassword=$('ep-pwn-confirm')?.value||'';
 
-  if(!name||!phoneInput||!email){toast('Nama, nomor kontak, dan email wajib diisi','error');return}
-  if(!vEmail(email)){toast('Format email tidak valid','error');return}
+  if(!name||!phoneInput){toast('Nama dan nomor kontak wajib diisi','error');return}
   if(!vWA(phoneInput)){toast('Format nomor kontak tidak valid','error');return}
 
-  const existingUser=DB.findU(email);
-  if(existingUser&&existingUser.id!==user.id){toast('Email sudah digunakan akun lain','error');return}
-
-  const passwordRequested=Boolean(currentPassword||newPassword||confirmPassword);
-  if(passwordRequested){
-    if(!currentPassword||!newPassword||!confirmPassword){toast('Lengkapi semua field ganti password','error');return}
-    if(user.passwordHash!==hs(currentPassword)){toast('Password lama tidak sesuai','error');return}
-    if(newPassword.length<6){toast('Password baru minimal 6 karakter','error');return}
-    if(newPassword!==confirmPassword){toast('Konfirmasi password baru tidak cocok','error');return}
+  try{
+    const profile=await SupabaseAuth.updateProfile(user.id,{name,phone:nWA(phoneInput)});
+    const savedUser={
+      ...user,
+      name:profile.name||name,
+      phone:profile.phone||nWA(phoneInput),
+      avatar:(profile.name||name)[0].toUpperCase(),
+      role:profile.role==='admin'?'admin':user.role,
+    };
+    DB.upsertU(savedUser);
+    Auth.cu=savedUser;
+    toast('Informasi profil berhasil disimpan dengan aman.','success');
+    R.go('profile');
+  }catch(err){
+    console.error('[Auth] Gagal menyimpan profil ke Supabase:',err);
+    toast('Profil gagal disimpan ke server. Periksa koneksi dan kebijakan akses Supabase.','error');
   }
-
-  const updatedUser={
-    ...user,
-    name,
-    email,
-    phone:nWA(phoneInput),
-    avatar:name[0].toUpperCase(),
-    ...(passwordRequested?{passwordHash:hs(newPassword)}:{})
-  };
-  DB.upsertU(updatedUser);
-  const savedUser=DB.findById(updatedUser.id);
-  if(!savedUser||savedUser.name!==name||savedUser.email!==email||savedUser.phone!==updatedUser.phone||savedUser.passwordHash!==updatedUser.passwordHash){
-    toast('Perubahan profil gagal disimpan','error');
-    return;
-  }
-
-  Auth.cu=savedUser;
-  toast('Perubahan profil berhasil disimpan','success');
-  R.go('profile');
 }
 
 function doLogout(){
@@ -1496,7 +1516,7 @@ const R = {
 
     const authEl = $('auth');
     const appEl  = $('app');
-    const AUTH_PAGES  = ['login', 'register', 'forgot'];
+    const AUTH_PAGES  = ['login', 'register', 'forgot', 'reset-password'];
     const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'profile', 'admin'];
 
     if (AUTH_PAGES.includes(page)) {
@@ -1760,6 +1780,7 @@ function initApp() {
   window.doReg             = doReg;
   window.tglPw             = tglPw;
   window.doForg            = doForg;
+  window.finishPasswordReset = finishPasswordReset;
   window.updTx             = updTx;
   window.refreshAdminOrders = refreshAdminOrders;
   window.admWA             = admWA;
@@ -2425,30 +2446,73 @@ function admBannerDelConfirm(id){
   window.admBannerDel        = admBannerDel;
   window.admBannerDelConfirm = admBannerDelConfirm;
 
-  // Handle OAuth callback jika baru redirect dari Google
-  checkOAuthCallback().then(u => {
-    if (u) {
-      toast(`Selamat datang, ${u.name}!`, 'success');
-      $('ls')?.classList.add('hide');
+  checkOAuthCallback().then(result => {
+    $('ls')?.classList.add('hide');
+    if (result?.recovery) {
+      R.go('reset-password');
+    } else if (result?.user) {
+      toast(`Selamat datang, ${result.user.name}!`, 'success');
+      R.go('home');
+    } else {
       R.go('home');
     }
-  }).catch(() => {});
-
-  // Hide loading screen & navigate to home jika bukan OAuth callback
-  setTimeout(() => {
-    const hash = window.location.hash || '';
-    const search = window.location.search || '';
-    if (!hash.includes('access_token=') && !search.includes('code=')) {
-      $('ls')?.classList.add('hide');
-      R.go('home');
+  }).catch(err => {
+    console.error('[Auth] Gagal memproses tautan autentikasi:', err);
+    $('ls')?.classList.add('hide');
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    if (params.get('auth') === 'reset-password' || params.get('type') === 'recovery' || hashParams.get('type') === 'recovery') {
+      toast('Tautan reset tidak valid atau sudah kedaluwarsa. Minta tautan baru.','error',6000);
+      R.go('forgot');
+    } else {
+      toast('Login tidak dapat diselesaikan. Silakan coba lagi.','error',6000);
+      R.go('login');
     }
-  }, 1400);
+  });
 }
 
 // ── OAuth Callback Handler ──────────────────────────────────
 async function checkOAuthCallback() {
   const hash = window.location.hash || '';
   const search = window.location.search || '';
+  const queryParams = new URLSearchParams(search);
+  const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+  const isRecovery = queryParams.get('auth') === 'reset-password'
+    || queryParams.get('type') === 'recovery'
+    || hashParams.get('type') === 'recovery';
+
+  if (isRecovery) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia');
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw error;
+    const user = data?.session?.user;
+    if (!user?.id || !user.email) throw new Error('Sesi verifikasi tidak ditemukan');
+
+    const profile = await SupabaseAuth.getProfile(user.id);
+    const safeEmail = user.email.trim().toLowerCase();
+    const name = profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];
+    const appUser = {
+      id: user.id,
+      name,
+      email: safeEmail,
+      passwordHash: '',
+      phone: profile?.phone || user.phone || '',
+      avatar: user.user_metadata?.avatar_url || (name[0] || 'U').toUpperCase(),
+      role: profile?.role === 'admin' ? 'admin' : 'user',
+      createdAt: user.created_at || new Date().toISOString(),
+    };
+    DB.upsertU(appUser);
+    DB.setSes({
+      userId: appUser.id,
+      rememberMe: true,
+      loginAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(),
+    });
+    Auth.cu = appUser;
+    window.history.replaceState(null, '', `${window.location.pathname}?auth=reset-password`);
+    return { recovery: true, user: appUser };
+  }
 
   if (hash.includes('access_token=') || search.includes('code=')) {
     console.log('🔄 [Google OAuth] Mendeteksi token callback...');
@@ -2505,7 +2569,6 @@ async function checkOAuthCallback() {
         DB.clearTxCache();
         const session = {
           userId: u.id,
-          token: accessToken || gid('tok'),
           rememberMe: true,
           loginAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(),
@@ -2515,7 +2578,7 @@ async function checkOAuthCallback() {
 
         // Bersihkan token dari URL bar
         window.history.replaceState(null, '', window.location.pathname);
-        return u;
+        return { user: u };
       }
     } catch (err) {
       console.error('❌ [Google OAuth] Error memproses login:', err);
