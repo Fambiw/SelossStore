@@ -1,4 +1,4 @@
-import { sampleProds, sampleBanners } from './sample-data.js';
+import { sampleProds } from './sample-data.js';
 import { SupabaseDB, isSupabaseConfigured } from './supabase.js';
 
 const DEMO_USER_IDS = new Set([
@@ -14,6 +14,8 @@ const DEMO_USER_IDS = new Set([
   'user_009',
   'user_010',
 ]);
+
+let transactionCache = null;
 
 export const DB = {
   g(k, d = null) {
@@ -113,20 +115,38 @@ export const DB = {
     return res ? bs : null;
   },
   
-  txs() { return this.g('sl_txs', []); },
-  upsertTx(tx) {
+  txs() { return transactionCache || this.g('sl_txs', []); },
+  setTxs(txs) {
+    if (!Array.isArray(txs)) throw new Error('Data pesanan tidak valid');
+    transactionCache = txs;
+  },
+  resetTxCache() {
+    transactionCache = null;
+  },
+  hideTxCache() {
+    transactionCache = [];
+  },
+  clearTxCache() {
+    transactionCache = [];
+  },
+  async createTx(tx) {
+    if (!isSupabaseConfigured()) throw new Error('Supabase belum dikonfigurasi; pesanan tidak dapat disimpan');
+    const savedTx = await SupabaseDB.createOrder(tx);
     const ts = this.txs();
-    const i = ts.findIndex(t => t.id === tx.id);
-    if (i >= 0) {
-      ts[i] = tx;
-    } else {
-      ts.unshift(tx);
-    }
-    this.s('sl_txs', ts);
-    if (isSupabaseConfigured()) {
-      SupabaseDB.upsertTransaction(tx).catch(() => {});
-    }
-    return tx;
+    this.setTxs([savedTx, ...ts.filter(item => item.id !== savedTx.id)]);
+    return savedTx;
+  },
+  async refreshTxs(userId) {
+    const transactions = await SupabaseDB.getTransactions(userId);
+    this.setTxs(transactions);
+    return transactions;
+  },
+  async updateTxStatus(id, status) {
+    if (!isSupabaseConfigured()) throw new Error('Supabase belum dikonfigurasi; status pesanan tidak dapat disimpan');
+    await SupabaseDB.updateTransactionStatus(id, status);
+    this.setTxs(this.txs().map(tx => tx.id === id
+      ? { ...tx, status, updatedAt: new Date().toISOString() }
+      : tx));
   },
 
   /**
@@ -142,44 +162,17 @@ export const DB = {
       if (cloudProds && cloudProds.length > 0) {
         this.s('sl_prods', cloudProds);
         console.log(`✅ [Supabase Sync] ${cloudProds.length} produk disinkronkan dari Supabase`);
-      } else if (cloudProds && cloudProds.length === 0) {
-        // Jika database Supabase masih kosong, seed produk awal ke cloud
-        const initialProds = sampleProds();
-        console.log('🌱 [Supabase Sync] Seeding produk awal ke Supabase...');
-        for (const prod of initialProds) {
-          await SupabaseDB.upsertProduct(prod);
-        }
-        this.s('sl_prods', initialProds);
-        console.log(`✅ [Supabase Sync] ${initialProds.length} produk berhasil di-seed ke Supabase!`);
       }
 
       // 2. Sinkronisasi Banner
       const cloudBanners = await SupabaseDB.getBanners();
       if (cloudBanners && cloudBanners.length > 0) {
         this.s('sl_banners', cloudBanners);
-      } else if (cloudBanners && cloudBanners.length === 0) {
-        const initialBanners = sampleBanners();
-        if (initialBanners && initialBanners.length > 0) {
-          await SupabaseDB.saveBanners(initialBanners);
-          this.s('sl_banners', initialBanners);
-        }
       }
 
       // 3. Sinkronisasi Transaksi
       const cloudTxs = await SupabaseDB.getTransactions();
-      if (cloudTxs && Array.isArray(cloudTxs)) {
-        const localTxs = this.txs();
-        const map = new Map();
-        cloudTxs.forEach(t => map.set(t.id, t));
-        localTxs.forEach(t => {
-          if (!map.has(t.id)) {
-            map.set(t.id, t);
-            SupabaseDB.upsertTransaction(t).catch(() => {});
-          }
-        });
-        const merged = Array.from(map.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        this.s('sl_txs', merged);
-      }
+      this.setTxs(cloudTxs);
 
       console.log('✅ [Supabase Sync] Sinkronisasi data cloud selesai!');
     } catch (err) {

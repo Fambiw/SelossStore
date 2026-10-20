@@ -6,6 +6,8 @@ function isLocalAuthTest() {
   return typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
 }
 
+const PRIMARY_ADMIN_EMAIL = 'swalloww32@gmail.com';
+
 export const Auth = {
   cu: null, // Current user
   
@@ -27,7 +29,7 @@ export const Auth = {
     if (isSupabaseConfigured()) {
       return SupabaseAuth.register(safeName, safeEmail, safePw).then(({ user }) => {
         const u = {
-          id: user?.id || gid('u'),
+          id: user?.id,
           name: safeName,
           email: safeEmail,
           passwordHash: '',
@@ -36,6 +38,7 @@ export const Auth = {
           role: 'user',
           createdAt: new Date().toISOString()
         };
+        if (!u.id) throw new Error('Supabase tidak mengembalikan ID akun');
         DB.upsertU(u);
         console.log('✅ [Supabase Auth] Berhasil terdaftar di Supabase Auth:', safeEmail, 'ID:', u.id);
         return u;
@@ -113,6 +116,7 @@ export const Auth = {
         expiresAt: new Date(Date.now() + (rem ? 7 : 1) * 864e5).toISOString()
       };
       DB.setSes(appSession);
+      DB.clearTxCache();
       this.cu = u;
       return u;
     }).catch(err => {
@@ -129,10 +133,32 @@ export const Auth = {
   
   logout() {
     if (isSupabaseConfigured()) {
-      SupabaseAuth.logout().catch(() => {});
+      SupabaseAuth.logout().catch(err => {
+        console.error('[Supabase Auth] Gagal logout:', err);
+      });
     }
     DB.clrSes();
+    DB.clearTxCache();
     this.cu = null;
+  },
+
+  async verifyAdmin() {
+    if (!isSupabaseConfigured()) return false;
+
+    const session = await SupabaseAuth.getSession();
+    const authenticatedEmail = session?.user?.email?.trim().toLowerCase();
+    if (!session?.user?.id || authenticatedEmail !== PRIMARY_ADMIN_EMAIL) {
+      if (this.cu) this.cu = { ...this.cu, role: 'user' };
+      return false;
+    }
+
+    if (this.cu?.id !== session.user.id) return false;
+
+    const profile = await SupabaseAuth.getProfile(session.user.id);
+    const isAdmin = profile?.role === 'admin';
+    this.cu = { ...this.cu, role: isAdmin ? 'admin' : 'user' };
+    DB.upsertU(this.cu);
+    return isAdmin;
   },
   
   check() {

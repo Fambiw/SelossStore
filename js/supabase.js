@@ -97,7 +97,6 @@ export const SupabaseAuth = {
           options: {
             data: {
               name: cleanName,
-              role: 'user',
             },
           },
         });
@@ -123,7 +122,6 @@ export const SupabaseAuth = {
         password: password,
         data: {
           name: cleanName,
-          role: 'user',
         },
       }),
     });
@@ -232,7 +230,8 @@ export const SupabaseAuth = {
   async getSession() {
     const sb = await getSupabase();
     if (!sb) return null;
-    const { data } = await sb.auth.getSession();
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw error;
     return data?.session || null;
   },
 
@@ -241,17 +240,16 @@ export const SupabaseAuth = {
    */
   async getProfile(userId) {
     const sb = await getSupabase();
-    if (!sb || !userId) return null;
+    if (!sb) throw new Error('Supabase client belum tersedia');
+    if (!userId) throw new Error('ID pengguna tidak tersedia');
 
     const { data, error } = await sb
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-
     if (error) {
-      console.error('[Supabase Auth] Gagal mengambil profil:', error);
-      return null;
+      throw error;
     }
     return data;
   },
@@ -261,11 +259,19 @@ export const SupabaseAuth = {
    */
   async updateProfile(userId, profileData) {
     const sb = await getSupabase();
-    if (!sb || !userId) return null;
+    if (!sb) throw new Error('Supabase client belum tersedia');
+    if (!userId) throw new Error('ID pengguna tidak tersedia');
+
+    const allowedProfileData = {
+      ...(typeof profileData.name === 'string' ? { name: profileData.name } : {}),
+      ...(typeof profileData.phone === 'string' ? { phone: profileData.phone } : {}),
+    };
+    if (Object.keys(allowedProfileData).length === 0) return null;
 
     const { data, error } = await sb
       .from('profiles')
-      .upsert({ id: userId, ...profileData })
+      .update(allowedProfileData)
+      .eq('id', userId)
       .select()
       .single();
 
@@ -425,7 +431,7 @@ export const SupabaseDB = {
   // ------------------------------------------------------
   async getTransactions(userId = null) {
     const sb = await getSupabase();
-    if (!sb) return null;
+    if (!sb) throw new Error('Supabase client belum tersedia');
 
     let query = sb.from('transactions').select('*').order('created_at', { ascending: false });
     if (userId) {
@@ -433,12 +439,9 @@ export const SupabaseDB = {
     }
 
     const { data, error } = await query;
-    if (error) {
-      console.error('[Supabase DB] Gagal mengambil transaksi:', error);
-      return null;
-    }
+    if (error) throw error;
 
-    return data.map(t => ({
+    return (data || []).map(t => ({
       id: t.id,
       userId: t.user_id,
       userName: t.user_name,
@@ -454,58 +457,110 @@ export const SupabaseDB = {
       formData: t.form_data,
       proofImage: t.proof_image,
       status: t.status,
+      paymentStatus: t.payment_status || 'pending',
       waMessage: t.wa_message,
       createdAt: t.created_at,
       updatedAt: t.updated_at,
     }));
   },
 
-  async upsertTransaction(tx) {
+  async createOrder(tx) {
     const sb = await getSupabase();
-    if (!sb) return false;
+    if (!sb) throw new Error('Supabase client belum tersedia');
 
-    const row = {
-      id: tx.id,
-      user_id: tx.userId,
-      user_name: tx.userName || '',
-      user_email: tx.userEmail || '',
-      user_wa: tx.userWA || '',
-      product_id: tx.productId,
-      product_name: tx.productName,
-      product_icon: tx.productIcon || '',
-      variant_id: tx.variantId,
-      variant_name: tx.variantName,
-      amount: tx.amount,
-      payment_method: tx.paymentMethod,
-      form_data: tx.formData || {},
-      proof_image: tx.proofImage || null,
-      status: tx.status || 'pending',
-      wa_message: tx.waMessage || '',
-      created_at: tx.createdAt || new Date().toISOString(),
-      updated_at: tx.updatedAt || new Date().toISOString(),
-    };
-
-    const { error } = await sb.from('transactions').upsert(row);
-    if (error) {
-      console.error('[Supabase DB] Gagal menyimpan transaksi:', error);
-      return false;
+    let proofPath = null;
+    if (tx.proofImage) {
+      const file = tx.proofImage;
+      if (!file.type?.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+        throw new Error('Bukti pembayaran harus berupa gambar maksimal 10MB');
+      }
+      const extensionByType = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+      };
+      const extension = extensionByType[file.type];
+      if (!extension) throw new Error('Format bukti pembayaran tidak didukung');
+      proofPath = `${tx.userId}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await sb.storage
+        .from('order-proofs')
+        .upload(proofPath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
     }
-    return true;
+
+    let data;
+    try {
+      const result = await sb.rpc('create_order', {
+        p_product_id: tx.productId,
+        p_variant_id: tx.variantId,
+        p_user_name: tx.userName,
+        p_user_wa: tx.userWA,
+        p_payment_method: tx.paymentMethod,
+        p_form_data: tx.formData || {},
+        p_proof_image: proofPath,
+        p_wa_message: tx.waMessage || '',
+      });
+      if (result.error) throw result.error;
+      data = result.data;
+    } catch (err) {
+      if (proofPath) {
+        const { error: cleanupError } = await sb.storage.from('order-proofs').remove([proofPath]);
+        if (cleanupError) {
+          console.error('[Supabase Storage] Gagal membersihkan bukti pesanan yang tidak tersimpan:', cleanupError);
+        }
+      }
+      throw err;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error('Database tidak mengembalikan pesanan yang tersimpan');
+    return {
+      id: row.id,
+      userId: row.user_id,
+      userName: row.user_name,
+      userEmail: row.user_email,
+      userWA: row.user_wa,
+      productId: row.product_id,
+      productName: row.product_name,
+      productIcon: row.product_icon,
+      variantId: row.variant_id,
+      variantName: row.variant_name,
+      amount: Number(row.amount),
+      paymentMethod: row.payment_method,
+      formData: row.form_data || {},
+      proofImage: row.proof_image,
+      status: row.status,
+      paymentStatus: row.payment_status || 'pending',
+      waMessage: row.wa_message,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  },
+
+  async getOrderProofUrl(path) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Supabase client belum tersedia');
+    const { data, error } = await sb.storage
+      .from('order-proofs')
+      .createSignedUrl(path, 300);
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error('Tautan bukti pembayaran tidak tersedia');
+    return data.signedUrl;
   },
 
   async updateTransactionStatus(id, newStatus) {
     const sb = await getSupabase();
-    if (!sb) return false;
+    if (!sb) throw new Error('Supabase client belum tersedia');
 
-    const { error } = await sb
+    const { data, error } = await sb
       .from('transactions')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
-    if (error) {
-      console.error('[Supabase DB] Gagal update status transaksi:', error);
-      return false;
-    }
+    if (error) throw error;
+    if (!data?.length) throw new Error('Pesanan tidak ditemukan atau akses ditolak');
     return true;
   },
 };

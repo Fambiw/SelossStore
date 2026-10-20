@@ -473,38 +473,6 @@ const Pages={
     <button class="btn-pr" style="width:100%;margin-top:18px" id="btn-nu" onclick="coNext()" disabled><i class="bi bi-send-check-fill"></i> Kirim & Lanjutkan</button></div>`;
   },
 
-  st7(p,v,cd){
-    const waMsg=buildWA(p,v,cd);
-    const waLink=`https://wa.me/${CFG.adminWA}?text=${encodeURIComponent(waMsg)}`;
-    if(!cd.txId){
-      const createdAt=new Date().toISOString();
-      const tx={id:generateOrderId(DB.txs().map(item=>item.id),new Date(createdAt)),userId:Auth.cu.id,userName:cd.form['f-name']||Auth.cu?.name||'',userWA:cd.form['f-wa']||'',userEmail:cd.form['f-em']||'',productId:p.id,productName:p.name,productIcon:p.image,variantId:v.id,variantName:v.n,amount:v.p,paymentMethod:cd.pm,formData:cd.form,proofImage:cd.proof?'uploaded':null,status:'pending',waMessage:waMsg,createdAt,updatedAt:createdAt};
-      DB.upsertTx(tx);St.co.txId=tx.id;
-    }
-    const pm=PMETHODS.find(m=>m.id===cd.pm);
-    return`<div class="succ-card"><div class="succ-ico"><i class="bi bi-check-lg" aria-hidden="true"></i></div>
-    <div class="succ-ttl">Hampir Selesai!</div>
-    <div class="succ-sub">Bukti pembayaranmu berhasil diterima!<br>Hubungi admin via WhatsApp agar pesanan segera diproses ya.</div>
-    <div style="background:var(--gy5);border-radius:var(--r2);padding:16px;text-align:left;margin-bottom:20px;font-size:.82rem">
-      <div style="font-weight:700;margin-bottom:10px;color:var(--dk)"><i class="bi bi-receipt" aria-hidden="true"></i> Ringkasan Pesanan</div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px">
-        <span style="color:var(--gy)">Produk</span><span style="font-weight:600">${esc(p.name)}</span>
-        <span style="color:var(--gy)">Paket</span><span style="font-weight:600">${esc(v.n)}</span>
-        <span style="color:var(--gy)">Total</span><span style="font-weight:700;color:var(--pr)">${fmt(v.p)}</span>
-        <span style="color:var(--gy)">Metode</span><span style="font-weight:600">${esc(pm?.name||cd.pm)}</span>
-        <span style="color:var(--gy)">Status</span><span>${sbdg('pending')}</span>
-      </div>
-    </div>
-    <a href="${waLink}" target="_blank" class="btn-wa" onclick="afterWA()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      Hubungi Admin via WhatsApp
-    </a>
-    <div style="display:flex;gap:10px;margin-top:12px">
-      <button class="btn-sec" style="flex:1" onclick="R.go('history')"><i class="bi bi-receipt"></i> Lihat Transaksi</button>
-      <button class="btn-sec" style="flex:1" onclick="newCo()"><i class="bi bi-house"></i> Beranda</button>
-    </div></div>`;
-  },
-
   afterCo(){
     const cd=St.co;if(!cd.prod)return;
     if(cd.step===6){
@@ -527,8 +495,11 @@ const Pages={
   hist(){
     const allTxs=DB.txs();
     const myTxs=Auth.isAdm()?allTxs:allTxs.filter(t=>t.userId===Auth.cu.id);
+    const loadState=window._historyState||'loading';
     return`<div class="ph"><div class="ph-ttl"><i class="bi bi-receipt" aria-hidden="true"></i> ${Auth.isAdm()?'Semua Transaksi':'Riwayat Transaksi'}</div></div>
-    ${myTxs.length===0?`<div class="empty-st"><span class="ei"><i class="bi bi-bag" aria-hidden="true"></i></span><h3>Belum ada transaksi</h3><p>Yuk beli produk pertamamu!</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Belanja Sekarang</button></div>`:`
+    ${loadState==='loading'?`<div class="empty-st" role="status"><span class="ei"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span><h3>Memuat transaksi...</h3></div>`:
+    loadState==='error'?`<div class="empty-st" role="alert"><span class="ei"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><h3>Transaksi tidak dapat dimuat</h3><p>${esc(window._historyError||'Periksa koneksi dan akses database.')}</p><button class="btn-pr" style="margin-top:14px" onclick="refreshUserTransactions()">Coba lagi</button></div>`:
+    myTxs.length===0?`<div class="empty-st"><span class="ei"><i class="bi bi-bag" aria-hidden="true"></i></span><h3>Belum ada transaksi</h3><p>Yuk beli produk pertamamu!</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Belanja Sekarang</button></div>`:`
     <div>${myTxs.map(tx=>`<div class="txcard" onclick="showTxD('${tx.id}')">
       <div class="tx-ico">${tx.productIcon?`<img src="${tx.productIcon}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'}</div>
       <div class="tx-inf"><div class="tx-nm">${esc(tx.productName)}</div>
@@ -744,6 +715,7 @@ const Pages={
   // ── ADMIN PESANAN ───────────────────────────────────────────
   adminOrders(){
     const allTxs = DB.txs();
+    const loadState = window._admOrdersState || 'loading';
     const q = (window._admOrdQ||'').toLowerCase();
     const sf = window._admOrdFilter || 'all';
     let filtered = allTxs;
@@ -751,6 +723,7 @@ const Pages={
       t.id.toLowerCase().includes(q) ||
       (t.userName||'').toLowerCase().includes(q) ||
       (t.productName||'').toLowerCase().includes(q) ||
+      (t.userEmail||'').toLowerCase().includes(q) ||
       (t.userWA||'').includes(q)
     );
     if(sf !== 'all') filtered = filtered.filter(t => t.status === sf);
@@ -772,12 +745,19 @@ const Pages={
         <select class="adm-select" onchange="admOrdFilter(this.value)">
           ${statusOpts.map(o=>`<option value="${o.v}" ${sf===o.v?'selected':''}>${o.l}</option>`).join('')}
         </select>
+        <button class="adm-btn-sec" type="button" onclick="refreshAdminOrders()" ${loadState==='loading'?'disabled':''}>
+          <i class="bi bi-arrow-clockwise"></i> Muat ulang
+        </button>
       </div>
       <div class="adm-card" style="padding:0;overflow:hidden">
-        ${filtered.length === 0
+        ${loadState==='loading'
+          ? `<div class="adm-empty" role="status"><i class="bi bi-arrow-repeat" style="font-size:2.5rem;color:var(--pr)"></i><p>Memuat pesanan dari database…</p></div>`
+          : loadState==='error'
+            ? `<div class="adm-empty" role="alert"><i class="bi bi-exclamation-triangle" style="font-size:2.5rem;color:var(--ac)"></i><p>${esc(window._admOrdersError||'Gagal memuat pesanan dari database.')}</p><button class="adm-btn-primary" type="button" onclick="refreshAdminOrders()">Coba lagi</button></div>`
+            : filtered.length === 0
           ? `<div class="adm-empty"><i class="bi bi-receipt" style="font-size:2.5rem;color:var(--gy3)"></i><p>${allTxs.length===0?'Belum ada pesanan':'Tidak ada pesanan yang cocok'}</p></div>`
           : `<div class="adm-tbl-scroll"><table class="adm-table">
-              <thead><tr><th>ID</th><th>Produk</th><th>Pembeli</th><th>Metode</th><th>Total</th><th>Status</th><th>Tgl</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>ID</th><th>Produk</th><th>Pembeli</th><th>Email</th><th>Metode</th><th>Total</th><th>Pembayaran</th><th>Status Pesanan</th><th>Tgl</th><th>Aksi</th></tr></thead>
               <tbody>${filtered.map(tx => {
                 const pm = PMETHODS.find(m=>m.id===tx.paymentMethod);
                 return `<tr>
@@ -787,8 +767,10 @@ const Pages={
                     <div><div style="font-weight:600;font-size:.82rem">${esc(tx.productName||'-')}</div><div style="font-size:.7rem;color:var(--gy)">${esc(tx.variantName||'-')}</div></div>
                   </div></td>
                   <td><div style="font-size:.83rem;font-weight:500">${esc(tx.userName||'-')}</div><div style="font-size:.7rem;color:var(--gy)">${esc(tx.userWA||'-')}</div></td>
+                  <td style="font-size:.75rem">${esc(tx.userEmail||'-')}</td>
                   <td style="font-size:.8rem">${esc(pm?.name||tx.paymentMethod||'-')}</td>
                   <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
+                  <td>${esc(tx.paymentStatus||'pending')}</td>
                   <td>${sbdg(tx.status)}</td>
                   <td style="font-size:.73rem;color:var(--gy);white-space:nowrap">${fdt(tx.createdAt)}</td>
                   <td><div class="adm-act-btns">
@@ -1163,6 +1145,7 @@ function renderFinishStep(){
   const cd = St.co;
   const p = cd.prod;
   const v = cd.variant;
+  const savedOrder = DB.txs().find(tx => tx.id === cd.txId);
   const customerName = (cd.form['f-name'] || Auth.cu?.name || '').trim() || 'Customer';
   const adminNumber = CFG.adminWA || '6285111232205';
   const waMessage = buildWA(p, v, cd);
@@ -1173,7 +1156,8 @@ function renderFinishStep(){
       <div class="co-finish-card">
         <div class="co-finish-icon"><i class="bi bi-check-lg" aria-hidden="true"></i></div>
         <h3>Selamat, pesananmu berhasil dibuat!</h3>
-        <p>Pesanan sudah dicatat dan Anda dapat menghubungi admin melalui WhatsApp untuk proses selanjutnya.</p>
+        <p>Pesanan tersimpan dengan status pembayaran pending. Pembayaran akan diverifikasi admin secara terpisah.</p>
+        <p>ID Pesanan: <strong>${esc(savedOrder?.id || cd.txId || '-')}</strong> · Pembayaran: <strong>${esc(savedOrder?.paymentStatus || 'pending')}</strong></p>
         <div class="co-finish-summary">
           <div><span>Nama</span><strong>${esc(customerName)}</strong></div>
           <div><span>Aplikasi</span><strong>${esc(p?.name || '-')}</strong></div>
@@ -1230,13 +1214,61 @@ function handleProofFile(ev){
   toast('Bukti transfer berhasil dipilih','success');
 }
 
-function submitProofAndContinue(){
+async function submitProofAndContinue(){
   if(!St.co.proof){
     toast('Upload bukti transfer dulu sebelum lanjut','warning');
     return;
   }
-  St.co.step = 3;
-  R.go('checkout');
+  const cd = St.co;
+  const user = Auth.cu;
+  if (!user?.id || !cd.prod?.id || !cd.variant?.id || !cd.pm) {
+    toast('Data pesanan belum lengkap. Silakan periksa kembali checkout.','error');
+    return;
+  }
+  if (cd.txSubmitting) return;
+
+  cd.txSubmitting = true;
+  const submitButton = document.querySelector('#main button[onclick="submitProofAndContinue()"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Menyimpan pesanan...';
+  }
+
+  try {
+    const createdAt = new Date().toISOString();
+    const tx = await DB.createTx({
+      userId: user.id,
+      userName: cd.form['f-name'] || user.name || '',
+      userWA: cd.form['f-wa'] || '',
+      userEmail: user.email || '',
+      productId: cd.prod.id,
+      productName: cd.prod.name,
+      productIcon: cd.prod.image || '',
+      variantId: cd.variant.id,
+      variantName: cd.variant.n,
+      amount: cd.variant.p,
+      paymentMethod: cd.pm,
+      formData: cd.form,
+      proofImage: cd.proof,
+      status: 'pending',
+      paymentStatus: 'pending',
+      waMessage: buildWA(cd.prod, cd.variant, cd),
+      createdAt,
+      updatedAt: createdAt,
+    });
+    cd.txId = tx.id;
+    cd.step = 3;
+    R.go('checkout');
+  } catch (err) {
+    console.error('[Orders] Gagal membuat pesanan:', err);
+    toast(`Pesanan gagal disimpan. Silakan coba lagi. ${err.message || ''}`,'error',6000);
+  } finally {
+    cd.txSubmitting = false;
+    if (submitButton && cd.step === 2) {
+      submitButton.disabled = false;
+      submitButton.innerHTML = 'Lanjutkan';
+    }
+  }
 }
 
 function downloadCurrentQr(){
@@ -1262,7 +1294,7 @@ function showTxD(txId){
   <div style="text-align:center;margin-bottom:10px">${tx.productIcon?`<img src="${tx.productIcon}" style="width:64px;height:64px;border-radius:12px;object-fit:cover">`:'<span style="font-size:2.5rem"><i class="bi bi-box-seam" aria-hidden="true"></i></span>'}</div>
   <div style="text-align:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem">${esc(tx.productName)}</div><div style="font-size:.8rem;color:var(--gy)">${esc(tx.variantName)}</div><div style="margin-top:8px">${sbdg(tx.status)}</div></div>
   <div style="background:var(--gy5);border-radius:var(--r2);padding:14px;font-size:.83rem">
-    ${[['ID Transaksi',`<span style="font-family:monospace;font-size:.72rem">${tx.id}</span>`],['Tanggal',fdt(tx.createdAt)],['Pembeli',esc(tx.userName)],['WhatsApp',esc(tx.userWA||'-')],['Email',esc(tx.userEmail||'-')],['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],['Metode',esc(pm?.name||tx.paymentMethod||'-')]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gy4)"><span style="color:var(--gy)">${k}</span><span style="text-align:right;max-width:60%">${v}</span></div>`).join('')}
+    ${[['ID Transaksi',`<span style="font-family:monospace;font-size:.72rem">${tx.id}</span>`],['Tanggal',fdt(tx.createdAt)],['Pembeli',esc(tx.userName)],['WhatsApp',esc(tx.userWA||'-')],['Email',esc(tx.userEmail||'-')],['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],['Metode',esc(pm?.name||tx.paymentMethod||'-')],['Status Pembayaran',esc(tx.paymentStatus||'pending')],['Status Pesanan',esc(tx.status||'pending')]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gy4)"><span style="color:var(--gy)">${k}</span><span style="text-align:right;max-width:60%">${v}</span></div>`).join('')}
   </div>
   ${Auth.isAdm()&&tx.status!=='done'&&tx.status!=='cancelled'?`<div style="display:flex;gap:8px;margin-top:16px">
     ${tx.status==='pending'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','confirmed');closeTxM()"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
@@ -1335,9 +1367,15 @@ function fAdmTx(st){
   const tb=$('adm-tbody');if(tb)tb.innerHTML=Pages.admRows(f);
 }
 
-function updTx(txId,newSt){
+async function updTx(txId,newSt){
   const txs=DB.txs(),tx=txs.find(t=>t.id===txId);if(!tx)return;
-  tx.status=newSt;tx.updatedAt=new Date().toISOString();DB.upsertTx(tx);
+  try {
+    await DB.updateTxStatus(txId,newSt);
+  } catch (err) {
+    console.error('[Orders] Gagal memperbarui status pesanan:', err);
+    toast('Status pesanan gagal disimpan ke database','error');
+    return;
+  }
   const lbl={confirmed:'dikonfirmasi',done:'diselesaikan',cancelled:'dibatalkan'};
   toast(`Pesanan berhasil ${lbl[newSt]||newSt}`,'success');
   const tb=$('adm-tbody');if(tb)tb.innerHTML=Pages.admRows(DB.txs());
@@ -1349,6 +1387,95 @@ function admWA(txId){
   const wa=nWA(raw);
   const msg=`Halo ${tx.userName||'Kak'}!\n\nUpdate pesanan kamu di *Seloss Store*:\n📦 ${tx.productName} (${tx.variantName})\n💰 Total: ${fmt(tx.amount)}\n📋 Status: ${tx.status}\n\nAda yang bisa kami bantu? Terima kasih!`;
   window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+async function refreshUserTransactions(){
+  const userId = Auth.cu?.id;
+  if (!userId) {
+    R.go('login');
+    return;
+  }
+
+  window._historyState = 'loading';
+  window._historyError = '';
+  const renderHistory = () => {
+    const main = $('main');
+    if (main && R.cur === 'history') main.innerHTML = Pages.hist();
+  };
+  renderHistory();
+
+  try {
+    const session = await SupabaseAuth.getSession();
+    if (!session?.user?.id || session.user.id !== userId) {
+      throw new Error('Sesi autentikasi tidak cocok dengan akun aktif');
+    }
+    const transactions = await SupabaseDB.getTransactions(
+      Auth.isAdm() ? null : userId
+    );
+    if (Auth.cu?.id !== userId || R.cur !== 'history') return;
+    DB.setTxs(transactions);
+    window._historyState = 'ready';
+  } catch (err) {
+    console.error('[Orders] Gagal memuat riwayat transaksi:', err);
+    if (Auth.cu?.id !== userId || R.cur !== 'history') return;
+    DB.hideTxCache();
+    window._historyState = 'error';
+    window._historyError = 'Periksa koneksi, autentikasi, dan kebijakan akses Supabase.';
+  }
+  renderHistory();
+}
+
+async function refreshAdminOrders(){
+  const expectedUserId = Auth.cu?.id;
+  if (!expectedUserId) {
+    toast('Sesi admin tidak tersedia','error');
+    return;
+  }
+
+  window._admOrdersState = 'loading';
+  window._admOrdersError = '';
+  const main = $('main');
+  if (main && R.cur === 'admin' && window._admSub === 'orders') {
+    main.innerHTML = Pages.admin();
+  }
+
+  let isAdmin;
+  try {
+    isAdmin = await Auth.verifyAdmin();
+  } catch (err) {
+    console.error('[Auth] Gagal memverifikasi sesi admin:', err);
+    if (Auth.cu?.id === expectedUserId && R.cur === 'admin') {
+      Auth.cu = { ...Auth.cu, role: 'user' };
+      toast('Hak akses admin tidak dapat diverifikasi','error');
+      R.go('home');
+    }
+    return;
+  }
+  if (!isAdmin) {
+    if (Auth.cu?.id === expectedUserId && R.cur === 'admin') {
+      toast('Akses admin ditolak','error');
+      R.go('home');
+    }
+    return;
+  }
+
+  try {
+    const transactions = await SupabaseDB.getTransactions();
+    if (Auth.cu?.id !== expectedUserId || R.cur !== 'admin') return;
+    DB.setTxs(transactions);
+    window._admOrdersState = 'ready';
+  } catch (err) {
+    console.error('[Orders] Gagal memuat pesanan:', err);
+    if (Auth.cu?.id !== expectedUserId || R.cur !== 'admin') return;
+    DB.hideTxCache();
+    window._admOrdersState = 'error';
+    window._admOrdersError = 'Pesanan tidak dapat dimuat dari database. Periksa koneksi, autentikasi, dan kebijakan akses Supabase.';
+  }
+
+  if (main && R.cur === 'admin') {
+    if (window._admSub === 'orders') main.innerHTML = Pages.admin();
+    else if (window._admSub === 'dashboard') main.innerHTML = Pages.admin();
+  }
 }
 
 // ── MOBILE SEARCH ────────────────────────────────────────────
@@ -1387,11 +1514,42 @@ const R = {
         Pages.auth('login');
         return;
       }
+      if (page === 'admin') {
+        document.body.classList.remove('adm-layout');
+        if (authEl) authEl.style.display = 'none';
+        if (appEl) appEl.style.display = 'flex';
+        const main = $('main');
+        if (main) main.innerHTML = '<div role="status" style="padding:24px">Memverifikasi hak akses admin…</div>';
+        Auth.verifyAdmin().then(isAdmin => {
+          if (this.cur !== 'admin') return;
+          if (!isAdmin) {
+            toast('Akses admin tidak diberikan','error');
+            this.go('home');
+            return;
+          }
+          document.body.classList.add('adm-layout');
+          updNav();
+          DB.hideTxCache();
+          if (window._admSub === 'orders') window._admOrdersState = 'loading';
+          Pages.app(page, params);
+          refreshAdminOrders();
+        }).catch(err => {
+          console.error('[Auth] Gagal memverifikasi hak akses admin:', err);
+          toast('Hak akses admin tidak dapat diverifikasi. Silakan coba lagi.','error');
+          this.go('home');
+        });
+        return;
+      }
+      if (page === 'history') {
+        window._historyState = 'loading';
+        DB.hideTxCache();
+      }
       if (authEl) authEl.style.display = 'none';
       if (appEl)  appEl.style.display  = 'flex';
       document.body.classList.toggle('adm-layout', page === 'admin');
       updNav();
       Pages.app(page, params);
+      if (page === 'history') refreshUserTransactions();
     }
   }
 };
@@ -1603,6 +1761,7 @@ function initApp() {
   window.tglPw             = tglPw;
   window.doForg            = doForg;
   window.updTx             = updTx;
+  window.refreshAdminOrders = refreshAdminOrders;
   window.admWA             = admWA;
   window.fAdmTx            = fAdmTx;
   window.showTxD           = showTxD;
@@ -1854,11 +2013,23 @@ function admOrdFilter(f){
   main.innerHTML=Pages.admin();
 }
 
-function admOrdDetail(txId){
+async function admOrdDetail(txId){
   const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
+  const requestingUserId = Auth.cu?.id;
   const modal=$('adm-ord-modal');
   const inner=$('adm-ord-modal-inner');
   if(!modal||!inner)return;
+  let proofDetails = 'Tidak ada bukti tersimpan';
+  if (tx.proofImage) {
+    try {
+      const proofUrl = await SupabaseDB.getOrderProofUrl(tx.proofImage);
+      proofDetails = `<a href="${esc(proofUrl)}" target="_blank" rel="noopener noreferrer">Lihat bukti pembayaran</a>`;
+    } catch (err) {
+      console.error('[Orders] Gagal membuka bukti pembayaran:', err);
+      proofDetails = 'Bukti tersedia, tetapi tidak dapat dibuka';
+    }
+  }
+  if (Auth.cu?.id !== requestingUserId || R.cur !== 'admin') return;
   const pm=PMETHODS.find(m=>m.id===tx.paymentMethod);
   const wa=tx.userWA&&nWA(tx.userWA);
   const waValid=wa&&vWA(tx.userWA);
@@ -1895,6 +2066,9 @@ function admOrdDetail(txId){
           ['Diperbarui',fdt(tx.updatedAt||tx.createdAt)],
           ['Metode Bayar',esc(pm?.name||tx.paymentMethod||'-')],
           ['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],
+          ['Status Pembayaran',esc(tx.paymentStatus||'pending')],
+          ['Status Pesanan',esc(tx.status||'pending')],
+          ['Bukti Pembayaran',proofDetails],
         ].map(([k,v])=>`<div class="adm-det-row"><span>${k}</span><span>${v}</span></div>`).join('')}
       </div>
       ${waValid?`<a href="${waLink}" target="_blank" class="adm-btn-wa"><i class="bi bi-whatsapp"></i> Hubungi via WhatsApp</a>`:`<div class="adm-info-box" style="margin-top:14px"><i class="bi bi-exclamation-triangle"></i> Nomor WhatsApp tidak tersedia atau tidak valid</div>`}
@@ -1909,7 +2083,7 @@ function admOrdDetail(txId){
   modal.style.display='flex';
 }
 
-function admOrdUpdate(txId, newSt){
+async function admOrdUpdate(txId, newSt){
   const txs=DB.txs(),tx=txs.find(t=>t.id===txId);if(!tx)return;
   // Validate transition
   const allowed = {
@@ -1920,12 +2094,17 @@ function admOrdUpdate(txId, newSt){
     cancelled:[]
   };
   if(!allowed[tx.status]?.includes(newSt)){toast('Transisi status tidak valid','error');return;}
-  tx.status=newSt;tx.updatedAt=new Date().toISOString();DB.upsertTx(tx);
+  try {
+    await DB.updateTxStatus(txId,newSt);
+  } catch (err) {
+    console.error('[Orders] Gagal memperbarui status pesanan:', err);
+    toast('Perubahan status gagal disimpan ke database','error');
+    return;
+  }
   const lbl={confirmed:'dikonfirmasi',processing:'diproses',done:'diselesaikan',cancelled:'dibatalkan'};
   toast(`Pesanan berhasil ${lbl[newSt]||newSt}`,'success');
   admCloseOrdModal();admCloseConfirmModal();
-  const main=$('main');if(!main)return;
-  main.innerHTML=Pages.admin();
+  refreshAdminOrders();
 }
 
 function admOrdCancelConfirm(txId){
@@ -2323,6 +2502,7 @@ async function checkOAuthCallback() {
         };
 
         DB.upsertU(u);
+        DB.clearTxCache();
         const session = {
           userId: u.id,
           token: accessToken || gid('tok'),

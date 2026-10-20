@@ -3,6 +3,7 @@ import { DB } from '../js/db.js';
 describe('DB - LocalStorage Wrapper', () => {
   beforeEach(() => {
     localStorage.clear();
+    DB.resetTxCache();
   });
 
   describe('User Operations', () => {
@@ -70,16 +71,39 @@ describe('DB - LocalStorage Wrapper', () => {
   });
 
   describe('Transaction Operations', () => {
-    it('should upsert transaction to the beginning of the list', () => {
+    it('should store transactions returned by the database', () => {
       const tx1 = { id: 'tx_1', total: 50000 };
       const tx2 = { id: 'tx_2', total: 20000 };
       
-      DB.upsertTx(tx1);
-      DB.upsertTx(tx2);
+      DB.setTxs([tx1, tx2]);
       
       const txs = DB.txs();
       expect(txs.length).toBe(2);
-      expect(txs[0].id).toBe('tx_2'); // tx2 should be at index 0
+      expect(txs[0].id).toBe('tx_1');
+      expect(localStorage.getItem('sl_txs')).toBeNull();
+    });
+
+    it('should reset the in-memory transaction cache without deleting persisted data', () => {
+      const tx = { id: 'tx_saved' };
+      localStorage.setItem('sl_txs', JSON.stringify([tx]));
+      DB.hideTxCache();
+
+      expect(DB.txs()).toEqual([]);
+
+      DB.clearTxCache();
+      expect(DB.txs()).toEqual([]);
+      expect(localStorage.getItem('sl_txs')).not.toBeNull();
+
+      DB.resetTxCache();
+
+      expect(DB.txs()).toEqual([tx]);
+      expect(localStorage.getItem('sl_txs')).not.toBeNull();
+    });
+
+    it('should reject order creation when Supabase is unavailable', async () => {
+      await expect(DB.createTx({ id: 'tx_local_only' }))
+        .rejects.toThrow('Supabase belum dikonfigurasi');
+      expect(localStorage.getItem('sl_txs')).toBeNull();
     });
   });
 
