@@ -226,7 +226,7 @@ grant update (status, updated_at) on public.transactions to authenticated;
 
 create policy transactions_select_owner_or_admin
   on public.transactions for select to authenticated
-  using (user_id = (select auth.uid())::text or (select public.is_admin()));
+  using (user_id::text = (select auth.uid())::text or (select public.is_admin()));
 
 create policy transactions_update_admin
   on public.transactions for update to authenticated

@@ -64,6 +64,6 @@ on conflict (id) do update
 drop policy if exists transactions_select_owner_or_admin on public.transactions;
 create policy transactions_select_owner_or_admin
   on public.transactions for select to authenticated
-  using (user_id = (select auth.uid()) or (select public.is_admin()));
+  using (user_id::text = (select auth.uid())::text or (select public.is_admin()));
 
 commit;
