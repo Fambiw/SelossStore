@@ -3,7 +3,7 @@
 // Cache-First Strategy for Offline Support
 // ============================================================
 
-const CACHE_NAME = 'seloss-store-v1.3.6';
+const CACHE_NAME = 'seloss-store-v1.3.7';
 
 const ASSETS_TO_CACHE = [
   './',

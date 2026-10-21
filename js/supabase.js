@@ -320,6 +320,52 @@ export const SupabaseAuth = {
  * ========================================================
  */
 export const SupabaseDB = {
+  async getReviews() {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Review memerlukan database Supabase.');
+    const { data, error } = await sb.rpc('get_reviews');
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error('Database tidak mengembalikan daftar review yang valid');
+    return data;
+  },
+
+  async submitReview(rating, description) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Review memerlukan database Supabase.');
+    const { data, error } = await sb.rpc('submit_review', {
+      p_rating: rating,
+      p_description: description,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Database tidak mengonfirmasi review berhasil disimpan');
+    return data;
+  },
+
+  async updateReview(reviewId, rating, description) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Review memerlukan database Supabase.');
+    const { data, error } = await sb.rpc('update_review', {
+      p_review_id: reviewId,
+      p_rating: rating,
+      p_description: description,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Database tidak mengonfirmasi perubahan review berhasil disimpan');
+    return data;
+  },
+
+  async saveReviewReply(reviewId, reply) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Review memerlukan database Supabase.');
+    const { data, error } = await sb.rpc('save_review_reply', {
+      p_review_id: reviewId,
+      p_reply: reply,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Database tidak mengonfirmasi balasan berhasil disimpan');
+    return data;
+  },
+
   // ------------------------------------------------------
   // PRODUK (PRODUCTS)
   // ------------------------------------------------------

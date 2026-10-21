@@ -84,6 +84,7 @@ function updNav(){
   // Set active based on page
   if(pg==='home'){$('sbi-home')?.classList.add('act')}
   else if(pg==='history'){$('sbi-hist')?.classList.add('act')}
+  else if(pg==='reviews'){$('sbi-reviews')?.classList.add('act')}
   else if(pg==='profile'){$('sb-profile')?.classList.add('act')}
   else if(pg==='admin'){
     const sub=window._admSub||'dashboard';
@@ -320,6 +321,7 @@ const Pages={
     else if(page==='detail')main.innerHTML=this.detail(prms);
     else if(page==='checkout')main.innerHTML=this.checkout();
     else if(page==='history')main.innerHTML=this.hist();
+    else if(page==='reviews')main.innerHTML=this.reviews();
     else if(page==='profile')main.innerHTML=this.profile();
     else if(page==='complete-profile')main.innerHTML=this.completeProfile();
     else if(page==='admin'){
@@ -331,6 +333,21 @@ const Pages={
     if(page==='home')this.afterHome();
     if(page==='checkout')this.afterCo();
     if(page==='detail')this.afterDetail(prms);
+    if(page==='reviews')loadReviews();
+  },
+
+  reviews(){
+    if(ReviewState.loading)return`<section class="review-page"><div class="empty-st" role="status"><span class="ei"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span><h3>Memuat ulasan...</h3></div></section>`;
+    if(ReviewState.error)return`<section class="review-page"><header class="review-heading"><h1>Ulasan Pengguna</h1><p>Pendapat pengguna tentang pengalaman mereka menggunakan Seloss Store.</p></header><div class="empty-st" role="alert"><span class="ei"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><h3>Ulasan tidak dapat dimuat</h3><p>${esc(ReviewState.error)}</p><button class="btn-pr" type="button" onclick="loadReviews()">Coba lagi</button></div></section>`;
+    if(ReviewState.mode==='form')return reviewFormHTML();
+    return`<section class="review-page">
+      <header class="review-heading">
+        <div><h1>Ulasan Pengguna</h1><p>Pendapat pengguna tentang pengalaman mereka menggunakan Seloss Store.</p></div>
+        <button class="btn-pr review-add" type="button" onclick="openReviewForm()"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add Review</button>
+      </header>
+      ${ReviewState.reviews.length?`<div class="review-grid">${ReviewState.reviews.map(renderReviewCard).join('')}</div>`:
+        `<div class="empty-st review-empty"><span class="ei"><i class="bi bi-chat-square-heart" aria-hidden="true"></i></span><h3>Belum ada ulasan</h3><p>Belum ada ulasan. Jadilah yang pertama membagikan pengalamanmu menggunakan Seloss Store.</p></div>`}
+    </section>`;
   },
 
   // HOME
@@ -992,6 +1009,212 @@ async function finishPasswordReset(){
   }
 }
 
+const ReviewState = {
+  loading: false,
+  error: '',
+  reviews: [],
+  mode: 'list',
+  rating: 0,
+  description: '',
+  editingId: null,
+  saving: false,
+  replyingId: null,
+  replyDraft: '',
+  replySaving: false,
+};
+
+function renderReviewStars(rating) {
+  return `<span class="review-stars" aria-label="${Number(rating)} dari 5 bintang">${[1, 2, 3, 4, 5]
+    .map(value => `<i class="bi ${value <= Number(rating) ? 'bi-star-fill is-filled' : 'bi-star'}" aria-hidden="true"></i>`)
+    .join('')}</span>`;
+}
+
+function renderReviewCard(review) {
+  const admin = Auth.isAdm();
+  const replyEditor = admin && ReviewState.replyingId === review.review_id;
+  return `<article class="review-card">
+    <header class="review-card-head">
+      <div><strong class="review-author">${esc(review.reviewer_name)}</strong>${renderReviewStars(review.rating)}</div>
+      <time datetime="${esc(review.created_at)}">${esc(fdt(review.created_at))}</time>
+    </header>
+    <p class="review-copy">${esc(review.description)}</p>
+    ${review.reply?`<section class="review-reply"><strong>${esc(review.reply_admin_name||'Admin Seloss Store')}</strong><p>${esc(review.reply)}</p></section>`:''}
+    ${admin?`<div class="review-card-actions"><button class="review-link" type="button" onclick="beginReviewReply('${review.review_id}')"><i class="bi ${review.reply?'bi-pencil':'bi-reply'}" aria-hidden="true"></i> ${review.reply?'Edit Balasan':'Balas Review'}</button></div>`:''}
+    ${replyEditor?`<form class="review-reply-form" onsubmit="submitReviewReply(event,'${review.review_id}')">
+      <label for="review-reply-${review.review_id}">${review.reply?'Edit Balasan':'Balasan Admin'}</label>
+      <textarea id="review-reply-${review.review_id}" maxlength="1000" oninput="updateReplyDraft(this.value)" placeholder="Tulis balasan untuk review ini...">${esc(ReviewState.replyDraft)}</textarea>
+      <div class="review-form-error" id="review-reply-error" role="alert"></div>
+      <div class="review-reply-actions"><button class="btn-pr" type="submit" ${ReviewState.replySaving?'disabled':''}>${ReviewState.replySaving?'Mengirim...':'Kirim Balasan'}</button><button class="review-back" type="button" onclick="cancelReviewReply()" ${ReviewState.replySaving?'disabled':''}>Batal</button></div>
+    </form>`:''}
+  </article>`;
+}
+
+function reviewFormHTML() {
+  const editing = Boolean(ReviewState.editingId);
+  return `<section class="review-form-page">
+    <button class="review-back review-back-top" type="button" onclick="backToReviews()"><i class="bi bi-arrow-left" aria-hidden="true"></i> Kembali ke ulasan</button>
+    <form class="review-form-card" onsubmit="submitReview(event)">
+      <div class="review-brand"><img src="icon.svg" alt="Logo Seloss Store"><span>Seloss Store</span><small>Cepat • Simple • Tanpa Ribet</small></div>
+      <h1>Bagaimana pengalamanmu menggunakan Seloss Store?</h1>
+      <p class="review-form-intro">Bagikan pendapatmu tentang fitur, tampilan, dan kemudahan penggunaan Seloss Store agar kami dapat terus berkembang menjadi lebih baik.</p>
+      <div class="review-rating-input" role="radiogroup" aria-label="Pilih rating" aria-describedby="review-rating-error">
+        ${[1, 2, 3, 4, 5].map(value => `<button type="button" class="review-star-button${value<=ReviewState.rating?' selected':''}" role="radio" aria-checked="${ReviewState.rating===value}" aria-label="${value} bintang" onclick="setReviewRating(${value})"><i class="bi ${value<=ReviewState.rating?'bi-star-fill':'bi-star'}" aria-hidden="true"></i></button>`).join('')}
+      </div>
+      <div class="review-form-error" id="review-rating-error" role="alert"></div>
+      <label class="review-label" for="review-description">Bagikan pengalamanmu</label>
+      <textarea id="review-description" maxlength="500" oninput="updateReviewDescription(this.value)" placeholder="Ceritakan pengalaman, pendapat, atau saranmu untuk Seloss Store...">${esc(ReviewState.description)}</textarea>
+      <div class="review-field-footer"><span class="review-form-error" id="review-description-error" role="alert"></span><span id="review-char-count">${ReviewState.description.length}/500</span></div>
+      <button class="btn-pr review-submit" type="submit" ${ReviewState.saving?'disabled':''}><i class="bi ${ReviewState.saving?'bi-arrow-repeat':'bi-send'}" aria-hidden="true"></i> ${ReviewState.saving?'Menyimpan...':editing?'Simpan Perubahan':'Submit Review'}</button>
+      <button class="review-back review-back-bottom" type="button" onclick="backToReviews()" ${ReviewState.saving?'disabled':''}>Kembali ke daftar ulasan</button>
+    </form>
+  </section>`;
+}
+
+function renderReviewsPage() {
+  const main = $('main');
+  if (!main || R.cur !== 'reviews') return;
+  main.innerHTML = Pages.reviews();
+}
+
+async function loadReviews() {
+  if (R.cur !== 'reviews' || ReviewState.loading) return;
+  ReviewState.loading = true;
+  ReviewState.error = '';
+  renderReviewsPage();
+  try {
+    await Auth.verifyAdmin();
+    ReviewState.reviews = await SupabaseDB.getReviews();
+  } catch (err) {
+    console.error('[Reviews] Gagal memuat ulasan:', err);
+    ReviewState.error = err.message || 'Periksa koneksi dan akses database.';
+  } finally {
+    ReviewState.loading = false;
+    renderReviewsPage();
+    updNav();
+  }
+}
+
+function openReviewForm() {
+  const mine = ReviewState.reviews.find(review => review.is_mine);
+  ReviewState.mode = 'form';
+  ReviewState.editingId = mine?.review_id || null;
+  ReviewState.rating = mine ? Number(mine.rating) : 0;
+  ReviewState.description = mine?.description || '';
+  ReviewState.saving = false;
+  renderReviewsPage();
+}
+
+function backToReviews() {
+  if (ReviewState.saving) return;
+  ReviewState.mode = 'list';
+  ReviewState.rating = 0;
+  ReviewState.description = '';
+  ReviewState.editingId = null;
+  renderReviewsPage();
+}
+
+function setReviewRating(rating) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return;
+  ReviewState.rating = rating;
+  document.querySelectorAll('.review-star-button').forEach((button, index) => {
+    const selected = index < rating;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-checked', String(index + 1 === rating));
+    button.querySelector('i').className = `bi ${selected?'bi-star-fill':'bi-star'}`;
+  });
+  const error = $('review-rating-error');
+  if (error) error.textContent = '';
+}
+
+function updateReviewDescription(description) {
+  ReviewState.description = description;
+  const count = $('review-char-count');
+  if (count) count.textContent = `${description.length}/500`;
+}
+
+async function submitReview(event) {
+  event.preventDefault();
+  if (ReviewState.saving) return;
+  const ratingError = $('review-rating-error');
+  const descriptionError = $('review-description-error');
+  const description = $('review-description')?.value || '';
+  const validRating = Number.isInteger(ReviewState.rating) && ReviewState.rating >= 1 && ReviewState.rating <= 5;
+  const validDescription = description.trim().length > 0 && description.length <= 500;
+  if (ratingError) ratingError.textContent = validRating ? '' : 'Pilih rating bintang terlebih dahulu.';
+  if (descriptionError) descriptionError.textContent = validDescription ? '' : description.trim() ? 'Review maksimal 500 karakter.' : 'Deskripsi review tidak boleh kosong.';
+  if (!validRating || !validDescription) return;
+
+  ReviewState.description = description.trim();
+  ReviewState.saving = true;
+  renderReviewsPage();
+  try {
+    if (ReviewState.editingId) {
+      await SupabaseDB.updateReview(ReviewState.editingId, ReviewState.rating, ReviewState.description);
+    } else {
+      await SupabaseDB.submitReview(ReviewState.rating, ReviewState.description);
+    }
+    ReviewState.mode = 'list';
+    ReviewState.editingId = null;
+    ReviewState.saving = false;
+    await loadReviews();
+    toast('Review berhasil disimpan');
+  } catch (err) {
+    console.error('[Reviews] Gagal menyimpan review:', err);
+    ReviewState.saving = false;
+    renderReviewsPage();
+    toast(err.message || 'Review gagal disimpan. Silakan coba lagi.', 'error');
+  }
+}
+
+function beginReviewReply(reviewId) {
+  const review = ReviewState.reviews.find(item => item.review_id === reviewId);
+  if (!Auth.isAdm() || !review) return;
+  ReviewState.replyingId = reviewId;
+  ReviewState.replyDraft = review.reply || '';
+  ReviewState.replySaving = false;
+  renderReviewsPage();
+  $('review-reply-' + reviewId)?.focus();
+}
+
+function updateReplyDraft(value) {
+  ReviewState.replyDraft = value;
+}
+
+function cancelReviewReply() {
+  if (ReviewState.replySaving) return;
+  ReviewState.replyingId = null;
+  ReviewState.replyDraft = '';
+  renderReviewsPage();
+}
+
+async function submitReviewReply(event, reviewId) {
+  event.preventDefault();
+  if (!Auth.isAdm() || ReviewState.replySaving) return;
+  const input = $('review-reply-' + reviewId);
+  const reply = input?.value || '';
+  const error = $('review-reply-error');
+  if (!reply.trim() || reply.length > 1000) {
+    if (error) error.textContent = reply.trim() ? 'Balasan maksimal 1.000 karakter.' : 'Balasan tidak boleh kosong.';
+    return;
+  }
+  ReviewState.replyDraft = reply.trim();
+  ReviewState.replySaving = true;
+  renderReviewsPage();
+  try {
+    await SupabaseDB.saveReviewReply(reviewId, ReviewState.replyDraft);
+    ReviewState.replyingId = null;
+    ReviewState.replyDraft = '';
+    ReviewState.replySaving = false;
+    await loadReviews();
+    toast('Balasan berhasil disimpan');
+  } catch (err) {
+    console.error('[Reviews] Gagal menyimpan balasan:', err);
+    ReviewState.replySaving = false;
+    renderReviewsPage();
+    toast(err.message || 'Balasan gagal disimpan. Silakan coba lagi.', 'error');
+  }
+}
+
 // ── HOME ─────────────────────────────────────────────────────
 function filterCat(c){St.cat=c;R.go('home')}
 function openProd(id){openPriceModal(id)}
@@ -1624,7 +1847,7 @@ const R = {
     const authEl = $('auth');
     const appEl  = $('app');
     const AUTH_PAGES  = ['login', 'register', 'forgot', 'reset-password'];
-    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'profile', 'admin', 'complete-profile'];
+    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'reviews', 'profile', 'admin', 'complete-profile'];
 
     if (AUTH_PAGES.includes(page)) {
       document.body.classList.remove('adm-layout');
@@ -1679,6 +1902,13 @@ const R = {
       if (page === 'history') {
         window._historyState = 'loading';
         DB.hideTxCache();
+      }
+      if (page === 'reviews') {
+        Object.assign(ReviewState, {
+          loading: false, error: '', reviews: [], mode: 'list', rating: 0,
+          description: '', editingId: null, saving: false, replyingId: null,
+          replyDraft: '', replySaving: false,
+        });
       }
       if (authEl) authEl.style.display = 'none';
       if (appEl)  appEl.style.display  = 'flex';
@@ -1905,6 +2135,16 @@ function initApp() {
   window.showTxD           = showTxD;
   window.closeTxM          = closeTxM;
   window.saveProf          = saveProf;
+  window.loadReviews       = loadReviews;
+  window.openReviewForm    = openReviewForm;
+  window.backToReviews     = backToReviews;
+  window.setReviewRating   = setReviewRating;
+  window.updateReviewDescription = updateReviewDescription;
+  window.submitReview     = submitReview;
+  window.beginReviewReply  = beginReviewReply;
+  window.updateReplyDraft  = updateReplyDraft;
+  window.cancelReviewReply = cancelReviewReply;
+  window.submitReviewReply = submitReviewReply;
   window.doLogout          = doLogout;
   window.newCo             = newCo;
   window.afterWA           = afterWA;
