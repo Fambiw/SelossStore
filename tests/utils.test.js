@@ -1,4 +1,4 @@
-import { fmt, generateOrderId, vEmail, vWA, nWA, disc } from '../js/utils.js';
+import { fmt, generateOrderId, vEmail, vWA, nWA, disc, completedItemCount } from '../js/utils.js';
 
 describe('Utility Functions', () => {
   describe('generateOrderId()', () => {
@@ -92,6 +92,33 @@ describe('Utility Functions', () => {
       expect(disc(50000, 50000)).toBe(0);
       expect(disc(40000, 50000)).toBe(0);
       expect(disc(0, 50000)).toBe(0);
+    });
+  });
+
+  describe('completedItemCount()', () => {
+    it('counts only completed units and defaults single-item orders to one', () => {
+      const transactions = [
+        { status: 'done', qty: 2 },
+        { status: 'confirmed', qty: 3 },
+        { status: 'cancelled', qty: 1 },
+        { status: 'done', qty: 4 },
+        { status: 'done' },
+      ];
+
+      expect(completedItemCount(transactions)).toBe(7);
+    });
+
+    it('ignores invalid quantities and leaves transaction data unchanged', () => {
+      const transactions = [
+        { status: 'done', qty: 0 },
+        { status: 'done', qty: 1.5 },
+        { status: 'pending', qty: 6 },
+      ];
+      const before = JSON.parse(JSON.stringify(transactions));
+
+      expect(completedItemCount(transactions)).toBe(2);
+      expect(transactions).toEqual(before);
+      expect(completedItemCount(null)).toBe(0);
     });
   });
 });

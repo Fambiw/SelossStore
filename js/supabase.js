@@ -62,7 +62,6 @@ export async function getSupabase() {
           detectSessionInUrl: true,
         },
       });
-      console.log('✅ [Supabase] SDK client aktif');
       return _supabase;
     }
   } catch (err) {

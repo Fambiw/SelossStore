@@ -3,7 +3,7 @@
 // Cache-First Strategy for Offline Support
 // ============================================================
 
-const CACHE_NAME = 'seloss-store-v1.3.7';
+const CACHE_NAME = 'seloss-store-v1.3.8';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -18,10 +18,8 @@ const ASSETS_TO_CACHE = [
 
 // ----- INSTALL -----
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Seloss Store Service Worker...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Caching app shell and assets');
       return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
         console.warn('[SW] Some assets failed to cache:', err);
       });
@@ -32,14 +30,12 @@ self.addEventListener('install', (event) => {
 
 // ----- ACTIVATE -----
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating new service worker...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME)
           .map((name) => {
-            console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
           })
       );
@@ -118,11 +114,6 @@ self.addEventListener('fetch', (event) => {
         });
     })
   );
-});
-
-// ----- BACKGROUND SYNC (Optional) -----
-self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
 });
 
 // ----- PUSH NOTIFICATIONS (Optional) -----

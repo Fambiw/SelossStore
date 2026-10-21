@@ -155,13 +155,10 @@ export const DB = {
   async syncWithSupabase() {
     if (!isSupabaseConfigured()) return;
     try {
-      console.log('🔄 [Supabase Sync] Memulai sinkronisasi cloud...');
-
       // 1. Sinkronisasi Produk
       const cloudProds = await SupabaseDB.getProducts();
       if (cloudProds && cloudProds.length > 0) {
         this.s('sl_prods', cloudProds);
-        console.log(`✅ [Supabase Sync] ${cloudProds.length} produk disinkronkan dari Supabase`);
       }
 
       // 2. Sinkronisasi Banner
@@ -174,7 +171,6 @@ export const DB = {
       const cloudTxs = await SupabaseDB.getTransactions();
       this.setTxs(cloudTxs);
 
-      console.log('✅ [Supabase Sync] Sinkronisasi data cloud selesai!');
     } catch (err) {
       console.warn('⚠️ [Supabase Sync] Gagal sinkronisasi data cloud:', err);
     }

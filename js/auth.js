@@ -43,7 +43,6 @@ export const Auth = {
         };
         if (!u.id) throw new Error('Supabase tidak mengembalikan ID akun');
         DB.upsertU(u);
-        console.log('✅ [Supabase Auth] Berhasil terdaftar di Supabase Auth:', safeEmail, 'ID:', u.id);
         return u;
       }).catch(err => {
         console.error('❌ [Supabase Auth] Error register:', err);

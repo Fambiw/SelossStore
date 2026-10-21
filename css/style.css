@@ -782,6 +782,14 @@
    .sb-item .si{color:var(--gy);font-size:1rem}
    .sb-item.act .si{color:var(--pr)}
    .sb-footer{padding-top:12px;border-top:1px solid var(--gy4)}
+   .theme-sidebar-menu{display:none;position:relative;margin-bottom:5px}
+   body.adm-layout .theme-sidebar-menu{display:block}
+   .theme-sidebar-menu summary{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r1);color:var(--dk3);font-size:.82rem;font-weight:600;cursor:pointer;list-style:none}
+   .theme-sidebar-menu summary::-webkit-details-marker{display:none}
+   .theme-sidebar-menu summary:hover,.theme-sidebar-menu[open] summary{background:var(--gy5);color:var(--dk)}
+   .theme-sidebar-options{display:grid;gap:4px;padding:6px 8px 8px 25px}
+   .theme-sidebar-options button{display:flex;align-items:center;gap:8px;padding:8px;border:0;border-radius:var(--r1);background:transparent;color:var(--dk3);font-size:.76rem;text-align:left}
+   .theme-sidebar-options button:hover,.theme-sidebar-options button.selected{background:var(--pr-l);color:var(--pr-d)}
    .sb-logout{color:#A33B3B}
    .sb-logout:hover{background:#FFF2F1;color:#8F2929}
    .sb-ov{z-index:250;background:rgba(31,78,121,.24);backdrop-filter:none}
@@ -799,6 +807,13 @@
    .topbar-menu summary:hover,.topbar-menu[open] summary{border-color:var(--pr-l);background:var(--pr-ll);color:var(--pr-d)}
    .topbar-menu summary i{font-size:.95rem}
    .topbar-popover{position:absolute;top:calc(100% + 8px);right:0;z-index:150;min-width:220px;padding:14px;border:1px solid var(--gy4);border-radius:var(--r2);background:var(--wh);box-shadow:var(--sh);color:var(--gy);font-size:.8rem;line-height:1.5}
+   .theme-menu{display:grid;gap:6px}
+   .theme-menu strong{padding:0 8px 5px;color:var(--dk);font-size:.78rem}
+   .theme-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:9px 8px;border:0;border-radius:var(--r1);background:transparent;color:var(--dk3);font-size:.8rem;text-align:left}
+   .theme-menu button:hover,.theme-menu button.selected{background:var(--pr-l);color:var(--pr-d)}
+   .theme-menu button i{width:17px;text-align:center}
+   .cs-link{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--dk3);font-weight:600}
+   .cs-link:hover{color:var(--pr)}
    .topbar-menu-toggle{display:none;width:40px;height:40px;flex:0 0 40px;border:1px solid var(--gy4);border-radius:var(--r1);background:var(--wh);color:var(--dk);font-size:1.2rem}
    .main{flex:1;width:100%;min-height:calc(100vh - 72px);margin:0;padding:26px 30px;background:var(--bg);transition:none}
 
@@ -849,6 +864,60 @@
       .topbar-popover{min-width:190px}
       .main{padding:16px 14px 24px}
    }
+
+   html[data-theme="dark"]{
+      color-scheme:dark;
+      --pr:#60A5FA; --pr-d:#BFDBFE; --pr-l:#1D3552; --pr-ll:#192B41;
+      --sc:#7CB9FF; --sc-l:#1D3552;
+      --ac:#F87171; --ac-l:#402629;
+      --ok:#34D399; --ok-l:#173B32;
+      --warn:#FBBF24; --warn-l:#40371D;
+      --dk:#E6EDF7; --dk2:#111C2B; --dk3:#C2CCDA;
+      --gy:#A5B1C2; --gy2:#8492A6; --gy3:#46566B; --gy4:#2B394C; --gy5:#1D2A3C;
+      --bg:#0E1724; --wh:#172333;
+      --sh:0 4px 24px rgba(0,0,0,.18); --sh2:0 8px 32px rgba(0,0,0,.3);
+   }
+   html[data-theme="dark"] body{background:var(--bg);color:var(--dk)}
+   html[data-theme="dark"] #app,html[data-theme="dark"] .app-main,
+   html[data-theme="dark"] .main{background:var(--bg)}
+   html[data-theme="dark"] .topbar,html[data-theme="dark"] .sb,
+   html[data-theme="dark"] .topbar-popover,html[data-theme="dark"] .pcard,
+   html[data-theme="dark"] .sk-card,html[data-theme="dark"] .txcard,
+   html[data-theme="dark"] .adm-card,html[data-theme="dark"] .adm-modal,
+   html[data-theme="dark"] .adm-modal-hdr,html[data-theme="dark"] .profile-form,
+   html[data-theme="dark"] .review-card,html[data-theme="dark"] .review-form-card,
+   html[data-theme="dark"] .checkout-panel,html[data-theme="dark"] .checkout-shell,
+   html[data-theme="dark"] .checkout-body,html[data-theme="dark"] .co-finish-card,
+   html[data-theme="dark"] .pay-card,html[data-theme="dark"] .var-card,
+   html[data-theme="dark"] .scont,html[data-theme="dark"] .stcont,
+   html[data-theme="dark"] .pl-var,html[data-theme="dark"] .adm-filter-tabs{
+      background-color:var(--wh);
+      border-color:var(--gy4);
+      color:var(--dk);
+   }
+   html[data-theme="dark"] .adm-modal-body,html[data-theme="dark"] .adm-table,
+   html[data-theme="dark"] .adm-tbl-scroll{color:var(--dk)}
+   html[data-theme="dark"] .adm-table tr:hover td{background:rgba(96,165,250,.08)}
+   html[data-theme="dark"] .sb-logout{color:#FCA5A5}
+   html[data-theme="dark"] .sb-logout:hover{background:#39272B;color:#FECACA}
+   html[data-theme="dark"] .adm-info-box{background:#1C3048;border-color:#304E70;color:#C5DDF8}
+   html[data-theme="dark"] .co-payment-total{background:linear-gradient(135deg,#183B37,#1D4238)}
+   html[data-theme="dark"] .review-reply{background:var(--gy5)}
+   html[data-theme="dark"] .s-conf,html[data-theme="dark"] .s-done{color:#A7F3D0}
+   html[data-theme="dark"] .s-pend{color:#FDE68A}
+   html[data-theme="dark"] .s-canc{color:#FECACA}
+   html[data-theme="dark"] .adm-top-item:nth-child(2) .adm-top-rank{background:#344256;color:#D6E0ED}
+   html[data-theme="dark"] .adm-top-item:nth-child(3) .adm-top-rank{background:#493523;color:#FED7AA}
+   html[data-theme="dark"] [style*="background:#dcfce7"]{background:#173B32!important;color:#BBF7D0!important}
+   html[data-theme="dark"] [style*="color:#166534"]{color:#BBF7D0!important}
+   html[data-theme="dark"] input,html[data-theme="dark"] textarea,
+   html[data-theme="dark"] select{color:var(--dk)}
+   html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:var(--gy2)}
+   html[data-theme="dark"] [style*="background:#fff"],
+   html[data-theme="dark"] [style*="background: #fff"],
+   html[data-theme="dark"] [style*="background:#ffffff"],
+   html[data-theme="dark"] [style*="background: #ffffff"]{background-color:var(--wh)!important}
+   html[data-theme="dark"] [style*="color:var(--dk3)"]{color:var(--dk3)}
 
    /* PROFILE EDITOR */
    .profile-page{width:min(100%,900px);margin:0 auto;padding:8px 0 36px}

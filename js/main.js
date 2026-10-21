@@ -2,8 +2,8 @@
 //  SELOSS STORE — Main Application Script v1.0// ============================================================
 
 import { CFG, PMETHODS, STLBLS } from './config.js';
-import { gid, generateOrderId, fmt, fdt, disc, esc, vEmail, vWA, nWA, $ } from './utils.js';
-import { sampleProds, sampleBanners } from './sample-data.js';
+import { gid, fmt, fdt, disc, esc, vEmail, vWA, nWA, completedItemCount, $ } from './utils.js';
+import { sampleBanners } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
@@ -61,6 +61,40 @@ export function rmT(id) {
   }
 }
 window.rmT = rmT;
+
+const THEME_STORAGE_KEY = 'sl_theme';
+const THEMES = new Set(['light', 'dark']);
+
+function getSavedTheme() {
+  try {
+    const theme = localStorage.getItem(THEME_STORAGE_KEY);
+    return THEMES.has(theme) ? theme : 'light';
+  } catch (err) {
+    console.error('[Theme] Gagal membaca preferensi tema:', err);
+    return 'light';
+  }
+}
+
+function applyTheme(theme) {
+  if (!THEMES.has(theme)) return;
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch (err) {
+    console.error('[Theme] Gagal menyimpan preferensi tema:', err);
+  }
+  document.querySelectorAll('[data-theme-choice], #sidebar-theme-light, #sidebar-theme-dark').forEach(button => {
+    const choice = button.dataset.themeChoice || (button.id.endsWith('-dark') ? 'dark' : 'light');
+    const selected = choice === theme;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function selectTheme(theme) {
+  applyTheme(theme);
+  document.querySelectorAll('.topbar-menu[open], .theme-sidebar-menu[open]').forEach(menu => menu.removeAttribute('open'));
+}
 
 
 function updNav(){
@@ -644,15 +678,15 @@ const Pages={
     const ymOf = (d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const thisMonth = ymOf(now);
 
-    const validStatuses = ['done','confirmed'];
-    const soldTxs = txs.filter(t => validStatuses.includes(t.status));
-    const totalSold = soldTxs.reduce((s,t)=> s + (t.qty||1), 0);
+    const unitsIn = tx => Number.isInteger(Number(tx.qty)) && Number(tx.qty) > 0 ? Number(tx.qty) : 1;
+    const soldTxs = txs.filter(t => t.status === 'done');
+    const totalSold = completedItemCount(txs);
 
     const pendTxs = txs.filter(t => t.status === 'pending');
-    const pendItems = pendTxs.reduce((s,t)=> s + (t.qty||1), 0);
+    const pendItems = pendTxs.reduce((sum, tx) => sum + unitsIn(tx), 0);
 
     const doneTxs = txs.filter(t => t.status === 'done');
-    const doneItems = doneTxs.reduce((s,t)=> s + (t.qty||1), 0);
+    const doneItems = doneTxs.reduce((sum, tx) => sum + unitsIn(tx), 0);
 
     const monthRev = doneTxs
       .filter(t => ymOf(new Date(t.createdAt)) === thisMonth)
@@ -665,7 +699,7 @@ const Pages={
       const label = d.toLocaleDateString('id-ID', {month:'short', year:'2-digit'});
       const mTxs = doneTxs.filter(t => ymOf(new Date(t.createdAt)) === key);
       const rev = mTxs.reduce((s,t)=>s+t.amount,0);
-      const items = mTxs.reduce((s,t)=>s+(t.qty||1),0);
+      const items = mTxs.reduce((sum, tx) => sum + unitsIn(tx), 0);
       months.push({key, label, rev, items});
     }
     const maxRev = Math.max(...months.map(m=>m.rev), 1);
@@ -674,7 +708,7 @@ const Pages={
     soldTxs.forEach(t => {
       const k = t.productId || t.productName;
       if(!prodMap[k]) prodMap[k] = {name: t.productName, icon: t.productIcon, units: 0};
-      prodMap[k].units += (t.qty||1);
+      prodMap[k].units += unitsIn(t);
     });
     const topProds = Object.values(prodMap).sort((a,b)=>b.units-a.units).slice(0,6);
     const maxUnits = Math.max(...topProds.map(p=>p.units), 1);
@@ -688,7 +722,7 @@ const Pages={
         </div>
       </div>
       <div class="adm-stats4">
-        <div class="asc4 asc4-blue"><div class="asc4-icon"><i class="bi bi-bag-check-fill"></i></div><div class="asc4-body"><div class="asc4-lbl">Total Item Terjual</div><div class="asc4-val">${totalSold.toLocaleString('id-ID')}</div><div class="asc4-sub">Pesanan valid (selesai+terkonfirmasi)</div></div></div>
+        <div class="asc4 asc4-blue"><div class="asc4-icon"><i class="bi bi-bag-check-fill"></i></div><div class="asc4-body"><div class="asc4-lbl">Total Item Terjual</div><div class="asc4-val">${totalSold.toLocaleString('id-ID')}</div><div class="asc4-sub">Unit dari pesanan selesai</div></div></div>
         <div class="asc4 asc4-warn"><div class="asc4-icon"><i class="bi bi-hourglass-split"></i></div><div class="asc4-body"><div class="asc4-lbl">Item Menunggu</div><div class="asc4-val">${pendItems.toLocaleString('id-ID')}</div><div class="asc4-sub">${pendTxs.length} pesanan menunggu</div></div></div>
         <div class="asc4 asc4-ok"><div class="asc4-icon"><i class="bi bi-check-circle-fill"></i></div><div class="asc4-body"><div class="asc4-lbl">Item Selesai</div><div class="asc4-val">${doneItems.toLocaleString('id-ID')}</div><div class="asc4-sub">${doneTxs.length} pesanan selesai</div></div></div>
         <div class="asc4 asc4-rev"><div class="asc4-icon"><i class="bi bi-wallet2"></i></div><div class="asc4-body"><div class="asc4-lbl">Pendapatan Bulan Ini</div><div class="asc4-val asc4-val-sm">${fmt(monthRev)}</div><div class="asc4-sub">${now.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</div></div></div>
@@ -901,22 +935,6 @@ const Pages={
     <div class="adm-modal-ov" id="adm-bnr-del-modal" style="display:none" onclick="if(event.target===this)admCloseBnrDelModal()"><div class="adm-modal adm-modal-sm" id="adm-bnr-del-modal-inner"></div></div>`;
   },
 
-  admRows(txs){
-    if(!txs.length)return'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gy)">Belum ada transaksi</td></tr>';
-    return txs.map(tx=>`<tr>
-      <td style="font-size:.7rem;color:var(--gy);font-family:monospace;white-space:nowrap">${esc(tx.id)}</td>
-      <td><div style="font-weight:600;font-size:.83rem">${tx.productIcon?`<img src="${tx.productIcon}" style="width:20px;height:20px;vertical-align:middle;border-radius:4px;margin-right:4px">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'} ${esc(tx.productName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.variantName)}</div></td>
-      <td><div style="font-size:.83rem;font-weight:500">${esc(tx.userName)}</div><div style="font-size:.73rem;color:var(--gy)">${esc(tx.userWA||'-')}</div></td>
-      <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
-      <td style="font-size:.8rem">${PMETHODS.find(m=>m.id===tx.paymentMethod)?.name||tx.paymentMethod||'-'}</td>
-      <td>${sbdg(tx.status)}</td>
-      <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${tx.status==='pending'?`<button class="adm-abtn ab-ok" onclick="updTx('${tx.id}','confirmed')"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
-        ${tx.status==='confirmed'?`<button class="adm-abtn ab-fin" onclick="updTx('${tx.id}','done')"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''}
-        ${tx.status!=='cancelled'&&tx.status!=='done'?`<button class="adm-abtn ab-del" onclick="updTx('${tx.id}','cancelled')" aria-label="Batalkan"><i class="bi bi-x-lg" aria-hidden="true"></i></button>`:''}
-        <button class="adm-abtn" style="background:var(--pr-l);color:var(--pr-d)" onclick="admWA('${tx.id}')" aria-label="Hubungi pelanggan"><i class="bi bi-chat-dots" aria-hidden="true"></i></button>
-      </div></td></tr>`).join('');
-  },
 };
 
 
@@ -1613,9 +1631,9 @@ function showTxD(txId){
     ${[['ID Transaksi',`<span style="font-family:monospace;font-size:.72rem">${tx.id}</span>`],['Tanggal',fdt(tx.createdAt)],['Pembeli',esc(tx.userName)],['WhatsApp',esc(tx.userWA||'-')],['Email',esc(tx.userEmail||'-')],['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],['Metode',esc(pm?.name||tx.paymentMethod||'-')],['Status Pembayaran',esc(tx.paymentStatus||'pending')],['Status Pesanan',esc(tx.status||'pending')]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gy4)"><span style="color:var(--gy)">${k}</span><span style="text-align:right;max-width:60%">${v}</span></div>`).join('')}
   </div>
   ${Auth.isAdm()&&tx.status!=='done'&&tx.status!=='cancelled'?`<div style="display:flex;gap:8px;margin-top:16px">
-    ${tx.status==='pending'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','confirmed');closeTxM()"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
-    ${tx.status==='confirmed'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','done');closeTxM()"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''}
-    <button style="padding:10px;background:var(--ac-l);color:#991b1b;border:none;border-radius:var(--r2);font-family:var(--fn);font-weight:600;cursor:pointer;font-size:.85rem" onclick="updTx('${tx.id}','cancelled');closeTxM()"><i class="bi bi-x-lg" aria-hidden="true"></i> Batal</button>
+    ${tx.status==='pending'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','confirmed')"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
+    ${tx.status==='confirmed'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','done')"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''}
+    <button style="padding:10px;background:var(--ac-l);color:#991b1b;border:none;border-radius:var(--r2);font-family:var(--fn);font-weight:600;cursor:pointer;font-size:.85rem" onclick="updTx('${tx.id}','cancelled')"><i class="bi bi-x-lg" aria-hidden="true"></i> Batal</button>
   </div>`:''}`;
   modal.classList.add('show');
 }
@@ -1709,26 +1727,60 @@ function doLogout(){
   R.go('login');
 }
 
-// ── ADMIN ─────────────────────────────────────────────────────
-function fAdmTx(st){
-  document.querySelectorAll('[id^="atf-"]').forEach(b=>{b.style.background='var(--wh)';b.style.borderColor='var(--gy3)';b.style.color='var(--dk)'});
-  const ab=$('atf-'+st);if(ab){ab.style.background='var(--pr)';ab.style.borderColor='var(--pr)';ab.style.color='#fff'}
-  const all=DB.txs(),f=st==='semua'?all:all.filter(t=>t.status===st);
-  const tb=$('adm-tbody');if(tb)tb.innerHTML=Pages.admRows(f);
-}
-
-async function updTx(txId,newSt){
-  const txs=DB.txs(),tx=txs.find(t=>t.id===txId);if(!tx)return;
-  try {
-    await DB.updateTxStatus(txId,newSt);
-  } catch (err) {
-    console.error('[Orders] Gagal memperbarui status pesanan:', err);
-    toast('Status pesanan gagal disimpan ke database','error');
+async function updTx(txId, newSt) {
+  if (!Auth.isAdm() || window._admOrderUpdatingId) return;
+  const tx = DB.txs().find(item => item.id === txId);
+  if (!tx) return;
+  const allowed = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['done', 'cancelled'],
+    processing: ['done', 'cancelled'],
+    done: [],
+    cancelled: [],
+  };
+  if (!allowed[tx.status]?.includes(newSt)) {
+    toast('Transisi status tidak valid', 'error');
     return;
   }
-  const lbl={confirmed:'dikonfirmasi',done:'diselesaikan',cancelled:'dibatalkan'};
-  toast(`Pesanan berhasil ${lbl[newSt]||newSt}`,'success');
-  const tb=$('adm-tbody');if(tb)tb.innerHTML=Pages.admRows(DB.txs());
+
+  window._admOrderUpdatingId = txId;
+  const modal = $('tx-mc');
+  const actionButtons = modal?.querySelectorAll('button') || [];
+  actionButtons.forEach(button => {
+    button.disabled = true;
+    button.dataset.previousHtml = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Menyimpan...';
+  });
+  try {
+    await DB.updateTxStatus(txId, newSt);
+  } catch (err) {
+    console.error('[Orders] Gagal memperbarui status pesanan:', err);
+    actionButtons.forEach(button => {
+      button.disabled = false;
+      if (button.dataset.previousHtml) button.innerHTML = button.dataset.previousHtml;
+      delete button.dataset.previousHtml;
+    });
+    toast('Perubahan status gagal disimpan ke database', 'error');
+    return;
+  } finally {
+    window._admOrderUpdatingId = null;
+  }
+
+  closeTxM();
+  if (R.cur === 'history') {
+    const main = $('main');
+    if (main) main.innerHTML = Pages.hist();
+  } else {
+    renderAdminAfterOrderUpdate();
+  }
+  const labels = { confirmed: 'dikonfirmasi', done: 'diselesaikan', cancelled: 'dibatalkan' };
+  toast(`Pesanan berhasil ${labels[newSt] || newSt}`, 'success');
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────
+function renderAdminAfterOrderUpdate(){
+  const main=$('main');
+  if(R.cur==='admin'&&main)main.innerHTML=Pages.admin();
 }
 
 function admWA(txId){
@@ -2056,18 +2108,10 @@ function startCD(endMs, elId) {
 }
 
 // ============================================================
-//  COPY TO CLIPBOARD
-// ============================================================
-function copyT(text) {
-  navigator.clipboard?.writeText(text)
-    .then(() => toast('Disalin ke clipboard!', 'success'))
-    .catch(() => toast('Gagal menyalin teks', 'error'));
-}
-
-// ============================================================
 //  INIT
 // ============================================================
 function initApp() {
+  applyTheme(getSavedTheme());
   try {
     DB.removeDemoUsers();
   } catch (err) {
@@ -2130,8 +2174,8 @@ function initApp() {
   window.saveCompleteProfile = saveCompleteProfile;
   window.updTx             = updTx;
   window.refreshAdminOrders = refreshAdminOrders;
+  window.selectTheme      = selectTheme;
   window.admWA             = admWA;
-  window.fAdmTx            = fAdmTx;
   window.showTxD           = showTxD;
   window.closeTxM          = closeTxM;
   window.saveProf          = saveProf;
@@ -2167,11 +2211,7 @@ function admChartClick(idx){
   const col = document.getElementById(`adm-bc-${idx}`);
   const det = $('adm-chart-detail');
   if(!col||!det) return;
-  const bar = col.querySelector('.adm-bar');
-  const rev = Number(bar?.style.height || 0);
-  const btt = col.querySelector('.adm-bar-tooltip');
   const lbl = col.querySelector('.adm-bar-lbl')?.textContent || '';
-  const revVal = bar?.parentElement?.previousElementSibling?.querySelector('span')?.textContent || '';
   // Read from data stored in tooltip
   const tt = document.getElementById(`adm-btt-${idx}`);
   if(!tt||!det) return;
@@ -2462,6 +2502,7 @@ async function admOrdDetail(txId){
 }
 
 async function admOrdUpdate(txId, newSt){
+  if (window._admOrderUpdatingId) return;
   const txs=DB.txs(),tx=txs.find(t=>t.id===txId);if(!tx)return;
   // Validate transition
   const allowed = {
@@ -2472,17 +2513,35 @@ async function admOrdUpdate(txId, newSt){
     cancelled:[]
   };
   if(!allowed[tx.status]?.includes(newSt)){toast('Transisi status tidak valid','error');return;}
+  window._admOrderUpdatingId = txId;
+  const statusButtons = document.querySelectorAll('#adm-ord-modal-inner button, #adm-confirm-modal-inner button');
+  statusButtons.forEach(button => {
+    button.dataset.wasDisabled = String(button.disabled);
+    button.disabled = true;
+    if (button.getAttribute('onclick')?.includes('admOrdUpdate(')) {
+      button.dataset.previousHtml = button.innerHTML;
+      button.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Menyimpan...';
+    }
+  });
   try {
     await DB.updateTxStatus(txId,newSt);
   } catch (err) {
     console.error('[Orders] Gagal memperbarui status pesanan:', err);
+    statusButtons.forEach(button => {
+      button.disabled = button.dataset.wasDisabled === 'true';
+      if (button.dataset.previousHtml) button.innerHTML = button.dataset.previousHtml;
+      delete button.dataset.wasDisabled;
+      delete button.dataset.previousHtml;
+    });
+    window._admOrderUpdatingId = null;
     toast('Perubahan status gagal disimpan ke database','error');
     return;
   }
+  window._admOrderUpdatingId = null;
   const lbl={confirmed:'dikonfirmasi',processing:'diproses',done:'diselesaikan',cancelled:'dibatalkan'};
   toast(`Pesanan berhasil ${lbl[newSt]||newSt}`,'success');
   admCloseOrdModal();admCloseConfirmModal();
-  refreshAdminOrders();
+  renderAdminAfterOrderUpdate();
 }
 
 function admOrdCancelConfirm(txId){
@@ -2771,7 +2830,6 @@ function admBannerDelConfirm(id){
   if(main) main.innerHTML = Pages.admin();
 }
 
-  window.copyT             = copyT;
   window.goAdmSub          = goAdmSub;
   window.admChartClick     = admChartClick;
   window.admProdSearch     = admProdSearch;
@@ -2876,7 +2934,6 @@ async function checkOAuthCallback() {
   }
 
   if (hash.includes('access_token=') || search.includes('code=')) {
-    console.log('🔄 [Google OAuth] Mendeteksi token callback...');
     try {
       let user = null;
       let accessToken = null;
@@ -2912,7 +2969,6 @@ async function checkOAuthCallback() {
       }
 
       if (user && user.email) {
-        console.log('✅ [Google OAuth] Berhasil autentikasi Google:', user.email);
         const safeEmail = user.email.toLowerCase();
         const profile = await SupabaseAuth.getProfile(user.id);
         const rawName = profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];

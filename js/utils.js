@@ -54,6 +54,16 @@ export function disc(o, c) {
   return (!o || o <= c) ? 0 : Math.round((1 - c / o) * 100);
 }
 
+export function completedItemCount(transactions) {
+  if (!Array.isArray(transactions)) return 0;
+  return transactions
+    .filter(tx => tx?.status === 'done')
+    .reduce((sum, tx) => {
+      const quantity = Number(tx.qty);
+      return sum + (Number.isInteger(quantity) && quantity > 0 ? quantity : 1);
+    }, 0);
+}
+
 // Escape HTML to prevent XSS
 export function esc(s) {
   if (s == null) return '';
