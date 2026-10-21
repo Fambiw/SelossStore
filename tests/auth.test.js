@@ -1,9 +1,11 @@
 import { Auth } from '../js/auth.js';
 import { DB } from '../js/db.js';
+import { SupabaseAuth } from '../js/supabase.js';
 
 describe('Auth Module', () => {
   beforeEach(() => {
     localStorage.clear();
+    DB.resetTxCache();
     Auth.cu = null; // Reset current user
   });
 
@@ -89,6 +91,62 @@ describe('Auth Module', () => {
       
       expect(Auth.check()).toBe(true);
       expect(Auth.cu.email).toBe('test@example.com');
+    });
+
+    describe('Supabase session restoration', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('uses the authenticated account profile and clears the previous account cache', async () => {
+        const previousUser = { id: 'account-a', email: 'a@example.com', name: 'Account A' };
+        DB.upsertU(previousUser);
+        DB.setSes({ userId: previousUser.id, expiresAt: new Date(Date.now() + 864e5).toISOString() });
+        DB.setTxs([{ id: 'account-a-order', userId: previousUser.id }]);
+        Auth.cu = previousUser;
+
+        jest.spyOn(SupabaseAuth, 'getSession').mockResolvedValue({
+          user: {
+            id: 'account-b',
+            email: 'b@example.com',
+            user_metadata: { name: 'Old Google Name', phone: '081111111111' },
+          },
+        });
+        jest.spyOn(SupabaseAuth, 'getProfile').mockResolvedValue({
+          id: 'account-b',
+          name: 'Saved B Name',
+          phone: '628222222222',
+          role: 'user',
+        });
+
+        const restored = await Auth.restoreSupabaseSession();
+
+        expect(restored).toMatchObject({
+          id: 'account-b',
+          name: 'Saved B Name',
+          phone: '628222222222',
+        });
+        expect(Auth.cu).toEqual(restored);
+        expect(DB.ses().userId).toBe('account-b');
+        expect(DB.findById('account-a')).toEqual(previousUser);
+        expect(DB.txs()).toEqual([]);
+      });
+
+      it('clears only the local session when Supabase has no authenticated user', async () => {
+        const existingUser = { id: 'account-a', email: 'a@example.com' };
+        DB.upsertU(existingUser);
+        DB.setSes({ userId: existingUser.id });
+        DB.setTxs([{ id: 'account-a-order', userId: existingUser.id }]);
+        Auth.cu = existingUser;
+        jest.spyOn(SupabaseAuth, 'getSession').mockResolvedValue(null);
+
+        await expect(Auth.restoreSupabaseSession()).resolves.toBeNull();
+
+        expect(Auth.cu).toBeNull();
+        expect(DB.ses()).toBeNull();
+        expect(DB.findById('account-a')).toEqual(existingUser);
+        expect(DB.txs()).toEqual([]);
+      });
     });
 
     it('should reject a cached user when the persisted session is missing', () => {

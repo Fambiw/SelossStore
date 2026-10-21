@@ -97,6 +97,11 @@ export const Auth = {
 
     return SupabaseAuth.login(safeEmail, safePw).then(async ({ user }) => {
       if (!user) throw new Error('Email tidak terdaftar');
+      if (this.cu?.id !== user.id) {
+        this.cu = null;
+        DB.clrSes();
+        DB.clearTxCache();
+      }
       const profile = await SupabaseAuth.getProfile(user.id);
       const displayName = profile?.name || user.user_metadata?.name || safeEmail.split('@')[0];
       const u = {
@@ -130,6 +135,52 @@ export const Auth = {
       }
       throw new Error(msg || 'Email tidak terdaftar');
     });
+  },
+
+  async restoreSupabaseSession() {
+    const session = await SupabaseAuth.getSession();
+    const user = session?.user;
+    if (!user?.id || !user.email) {
+      this.cu = null;
+      DB.clrSes();
+      DB.clearTxCache();
+      return null;
+    }
+
+    if (this.cu?.id !== user.id) {
+      this.cu = null;
+      DB.clrSes();
+      DB.clearTxCache();
+    }
+
+    const profile = await SupabaseAuth.getProfile(user.id);
+    if (!profile) throw new Error('Profil akun tidak ditemukan di database');
+
+    const safeEmail = user.email.trim().toLowerCase();
+    const name = profile.name?.trim()
+      || user.user_metadata?.full_name
+      || user.user_metadata?.name
+      || safeEmail.split('@')[0];
+    const appUser = {
+      id: user.id,
+      name,
+      email: safeEmail,
+      passwordHash: '',
+      phone: profile.phone || user.user_metadata?.phone || user.phone || '',
+      avatar: user.user_metadata?.avatar_url || (name[0] || 'U').toUpperCase(),
+      role: profile.role === 'admin' ? 'admin' : 'user',
+      createdAt: user.created_at || new Date().toISOString(),
+    };
+
+    DB.upsertU(appUser);
+    DB.setSes({
+      userId: appUser.id,
+      rememberMe: true,
+      loginAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(),
+    });
+    this.cu = appUser;
+    return appUser;
   },
   
   logout() {

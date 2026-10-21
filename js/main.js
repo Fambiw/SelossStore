@@ -7,7 +7,10 @@ import { sampleBanners } from './sample-data.js';
 import { DB } from './db.js';
 import { Auth } from './auth.js';
 import { St } from './store.js';
-import { SupabaseDB, SupabaseAuth, getSupabase, SUPABASE_CONFIG } from './supabase.js';
+import { SupabaseDB, SupabaseAuth, getSupabase } from './supabase.js';
+
+let historyTransactions = [];
+let historyUserId = null;
 
 // Expose shared modules to window for inline HTML handlers
 window.Auth = Auth;
@@ -604,10 +607,9 @@ const Pages={
 
   // HISTORY
   hist(){
-    const allTxs=DB.txs();
-    const myTxs=Auth.isAdm()?allTxs:allTxs.filter(t=>t.userId===Auth.cu.id);
+    const myTxs=historyTransactions.filter(t=>t.userId===Auth.cu?.id);
     const loadState=window._historyState||'loading';
-    return`<div class="ph"><div class="ph-ttl"><i class="bi bi-receipt" aria-hidden="true"></i> ${Auth.isAdm()?'Semua Transaksi':'Riwayat Transaksi'}</div></div>
+    return`<div class="ph"><div class="ph-ttl"><i class="bi bi-receipt" aria-hidden="true"></i> Riwayat Transaksi</div></div>
     ${loadState==='loading'?`<div class="empty-st" role="status"><span class="ei"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span><h3>Memuat transaksi...</h3></div>`:
     loadState==='error'?`<div class="empty-st" role="alert"><span class="ei"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><h3>Transaksi tidak dapat dimuat</h3><p>${esc(window._historyError||'Periksa koneksi dan akses database.')}</p><button class="btn-pr" style="margin-top:14px" onclick="refreshUserTransactions()">Coba lagi</button></div>`:
     myTxs.length===0?`<div class="empty-st"><span class="ei"><i class="bi bi-bag" aria-hidden="true"></i></span><h3>Belum ada transaksi</h3><p>Yuk beli produk pertamamu!</p><button class="btn-pr" style="margin-top:14px" onclick="R.go('home')">Belanja Sekarang</button></div>`:`
@@ -615,7 +617,6 @@ const Pages={
       <div class="tx-ico">${tx.productIcon?`<img src="${tx.productIcon}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'}</div>
       <div class="tx-inf"><div class="tx-nm">${esc(tx.productName)}</div>
       <div class="tx-sub">${esc(tx.variantName)} • ${fdt(tx.createdAt)}</div>
-      ${Auth.isAdm()?`<div class="tx-sub" style="color:var(--pr);font-weight:500"><i class="bi bi-person" aria-hidden="true"></i> ${esc(tx.userName)}</div>`:''}
       </div><div class="tx-rt"><div class="tx-amt">${fmt(tx.amount)}</div><div style="margin-top:4px">${sbdg(tx.status)}</div></div></div>`).join('')}</div>`}
     <div class="tx-modal" id="tx-modal"><div class="tx-mc" id="tx-mc"></div></div>`;
   },
@@ -1621,7 +1622,7 @@ function newCo(){St.resetCo();R.go('home')}
 
 // ── HISTORY / TX DETAIL ───────────────────────────────────────
 function showTxD(txId){
-  const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
+  const tx=historyTransactions.find(t=>t.id===txId&&t.userId===Auth.cu?.id);if(!tx)return;
   const modal=$('tx-modal'),mc=$('tx-mc');if(!modal||!mc)return;
   const pm=PMETHODS.find(m=>m.id===tx.paymentMethod);
   mc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-weight:700;font-size:1rem"><i class="bi bi-receipt" aria-hidden="true"></i> Detail Transaksi</div><button onclick="closeTxM()" aria-label="Tutup" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--gy)"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
@@ -1630,11 +1631,7 @@ function showTxD(txId){
   <div style="background:var(--gy5);border-radius:var(--r2);padding:14px;font-size:.83rem">
     ${[['ID Transaksi',`<span style="font-family:monospace;font-size:.72rem">${tx.id}</span>`],['Tanggal',fdt(tx.createdAt)],['Pembeli',esc(tx.userName)],['WhatsApp',esc(tx.userWA||'-')],['Email',esc(tx.userEmail||'-')],['Total',`<strong style="color:var(--pr)">${fmt(tx.amount)}</strong>`],['Metode',esc(pm?.name||tx.paymentMethod||'-')],['Status Pembayaran',esc(tx.paymentStatus||'pending')],['Status Pesanan',esc(tx.status||'pending')]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gy4)"><span style="color:var(--gy)">${k}</span><span style="text-align:right;max-width:60%">${v}</span></div>`).join('')}
   </div>
-  ${Auth.isAdm()&&tx.status!=='done'&&tx.status!=='cancelled'?`<div style="display:flex;gap:8px;margin-top:16px">
-    ${tx.status==='pending'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','confirmed')"><i class="bi bi-check-circle" aria-hidden="true"></i> Konfirmasi</button>`:''}
-    ${tx.status==='confirmed'?`<button class="btn-pr" style="flex:1;padding:10px;font-size:.85rem" onclick="updTx('${tx.id}','done')"><i class="bi bi-check-lg" aria-hidden="true"></i> Selesai</button>`:''}
-    <button style="padding:10px;background:var(--ac-l);color:#991b1b;border:none;border-radius:var(--r2);font-family:var(--fn);font-weight:600;cursor:pointer;font-size:.85rem" onclick="updTx('${tx.id}','cancelled')"><i class="bi bi-x-lg" aria-hidden="true"></i> Batal</button>
-  </div>`:''}`;
+  `;
   modal.classList.add('show');
 }
 function closeTxM(){const m=$('tx-modal');if(m)m.classList.remove('show')}
@@ -1727,56 +1724,6 @@ function doLogout(){
   R.go('login');
 }
 
-async function updTx(txId, newSt) {
-  if (!Auth.isAdm() || window._admOrderUpdatingId) return;
-  const tx = DB.txs().find(item => item.id === txId);
-  if (!tx) return;
-  const allowed = {
-    pending: ['confirmed', 'cancelled'],
-    confirmed: ['done', 'cancelled'],
-    processing: ['done', 'cancelled'],
-    done: [],
-    cancelled: [],
-  };
-  if (!allowed[tx.status]?.includes(newSt)) {
-    toast('Transisi status tidak valid', 'error');
-    return;
-  }
-
-  window._admOrderUpdatingId = txId;
-  const modal = $('tx-mc');
-  const actionButtons = modal?.querySelectorAll('button') || [];
-  actionButtons.forEach(button => {
-    button.disabled = true;
-    button.dataset.previousHtml = button.innerHTML;
-    button.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> Menyimpan...';
-  });
-  try {
-    await DB.updateTxStatus(txId, newSt);
-  } catch (err) {
-    console.error('[Orders] Gagal memperbarui status pesanan:', err);
-    actionButtons.forEach(button => {
-      button.disabled = false;
-      if (button.dataset.previousHtml) button.innerHTML = button.dataset.previousHtml;
-      delete button.dataset.previousHtml;
-    });
-    toast('Perubahan status gagal disimpan ke database', 'error');
-    return;
-  } finally {
-    window._admOrderUpdatingId = null;
-  }
-
-  closeTxM();
-  if (R.cur === 'history') {
-    const main = $('main');
-    if (main) main.innerHTML = Pages.hist();
-  } else {
-    renderAdminAfterOrderUpdate();
-  }
-  const labels = { confirmed: 'dikonfirmasi', done: 'diselesaikan', cancelled: 'dibatalkan' };
-  toast(`Pesanan berhasil ${labels[newSt] || newSt}`, 'success');
-}
-
 // ── ADMIN ─────────────────────────────────────────────────────
 function renderAdminAfterOrderUpdate(){
   const main=$('main');
@@ -1800,6 +1747,8 @@ async function refreshUserTransactions(){
 
   window._historyState = 'loading';
   window._historyError = '';
+  if (historyUserId !== userId) historyTransactions = [];
+  historyUserId = userId;
   const renderHistory = () => {
     const main = $('main');
     if (main && R.cur === 'history') main.innerHTML = Pages.hist();
@@ -1807,20 +1756,14 @@ async function refreshUserTransactions(){
   renderHistory();
 
   try {
-    const session = await SupabaseAuth.getSession();
-    if (!session?.user?.id || session.user.id !== userId) {
-      throw new Error('Sesi autentikasi tidak cocok dengan akun aktif');
-    }
-    const transactions = await SupabaseDB.getTransactions(
-      Auth.isAdm() ? null : userId
-    );
+    const transactions = await SupabaseDB.getUserTransactions();
     if (Auth.cu?.id !== userId || R.cur !== 'history') return;
-    DB.setTxs(transactions);
+    historyTransactions = transactions;
     window._historyState = 'ready';
   } catch (err) {
     console.error('[Orders] Gagal memuat riwayat transaksi:', err);
     if (Auth.cu?.id !== userId || R.cur !== 'history') return;
-    DB.hideTxCache();
+    historyTransactions = [];
     window._historyState = 'error';
     window._historyError = 'Periksa koneksi, autentikasi, dan kebijakan akses Supabase.';
   }
@@ -1862,7 +1805,7 @@ async function refreshAdminOrders(){
   }
 
   try {
-    const transactions = await SupabaseDB.getTransactions();
+    const transactions = await SupabaseDB.getAdminTransactions();
     if (Auth.cu?.id !== expectedUserId || R.cur !== 'admin') return;
     DB.setTxs(transactions);
     window._admOrdersState = 'ready';
@@ -1953,7 +1896,8 @@ const R = {
       }
       if (page === 'history') {
         window._historyState = 'loading';
-        DB.hideTxCache();
+        historyTransactions = [];
+        historyUserId = Auth.cu?.id || null;
       }
       if (page === 'reviews') {
         Object.assign(ReviewState, {
@@ -2122,11 +2066,6 @@ function initApp() {
   // Seed products if not yet stored
   DB.prods();
 
-  // Sinkronisasi data cloud dengan Supabase (Produk, Banner, Transaksi)
-  if (typeof DB.syncWithSupabase === 'function') {
-    DB.syncWithSupabase().catch(err => console.warn('[Supabase Sync Error]', err));
-  }
-
   // Register Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
@@ -2172,7 +2111,6 @@ function initApp() {
   window.doForg            = doForg;
   window.finishPasswordReset = finishPasswordReset;
   window.saveCompleteProfile = saveCompleteProfile;
-  window.updTx             = updTx;
   window.refreshAdminOrders = refreshAdminOrders;
   window.selectTheme      = selectTheme;
   window.admWA             = admWA;
@@ -2863,6 +2801,7 @@ function admBannerDelConfirm(id){
 
   checkOAuthCallback().then(result => {
     $('ls')?.classList.add('hide');
+    DB.syncWithSupabase().catch(err => console.warn('[Supabase Sync Error]', err));
     if (result?.recovery) {
       R.go('reset-password');
     } else if (result?.user) {
@@ -2889,124 +2828,44 @@ function admBannerDelConfirm(id){
 // ── OAuth Callback Handler ──────────────────────────────────
 async function checkOAuthCallback() {
   const hash = window.location.hash || '';
-  const search = window.location.search || '';
-  const queryParams = new URLSearchParams(search);
+  const queryParams = new URLSearchParams(window.location.search || '');
   const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
   const isRecovery = queryParams.get('auth') === 'reset-password'
     || queryParams.get('type') === 'recovery'
     || hashParams.get('type') === 'recovery';
+  const hasOAuthResponse = hashParams.has('access_token') || queryParams.has('code');
 
   if (queryParams.get('error_description') || queryParams.get('error')) {
     throw new Error(queryParams.get('error_description') || queryParams.get('error'));
   }
 
-  if (isRecovery) {
+  if (hasOAuthResponse || isRecovery) {
     const sb = await getSupabase();
-    if (!sb) throw new Error('Koneksi Supabase tidak tersedia');
-    const { data, error } = await sb.auth.getSession();
-    if (error) throw error;
-    const user = data?.session?.user;
-    if (!user?.id || !user.email) throw new Error('Sesi verifikasi tidak ditemukan');
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia untuk memproses callback');
 
-    const profile = await SupabaseAuth.getProfile(user.id);
-    const safeEmail = user.email.trim().toLowerCase();
-    const name = profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];
-    const appUser = {
-      id: user.id,
-      name,
-      email: safeEmail,
-      passwordHash: '',
-      phone: profile?.phone || user.user_metadata?.phone || user.phone || '',
-      avatar: user.user_metadata?.avatar_url || (name[0] || 'U').toUpperCase(),
-      role: profile?.role === 'admin' ? 'admin' : 'user',
-      createdAt: user.created_at || new Date().toISOString(),
-    };
-    DB.upsertU(appUser);
-    DB.setSes({
-      userId: appUser.id,
-      rememberMe: true,
-      loginAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(),
-    });
-    Auth.cu = appUser;
-    window.history.replaceState(null, '', `${window.location.pathname}?auth=reset-password`);
-    return { recovery: true, user: appUser };
-  }
-
-  if (hash.includes('access_token=') || search.includes('code=')) {
-    try {
-      let user = null;
-      let accessToken = null;
-
-      // 1. Coba getSession dari Supabase SDK jika aktif
-      const sb = await getSupabase();
-      if (sb) {
-        const { data, error } = await sb.auth.getSession();
-        if (error) throw error;
-        if (data?.session?.user) {
-          user = data.session.user;
-          accessToken = data.session.access_token;
-        }
-      }
-
-      // 2. Parse manual hash token jika SDK belum parse
-      if (!user && hash.includes('access_token=')) {
-        const params = new URLSearchParams(hash.substring(1));
-        accessToken = params.get('access_token');
-        if (accessToken) {
-          const uRes = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/user`, {
-            headers: {
-              apikey: SUPABASE_CONFIG.anonKey,
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
-          if (uRes.ok) {
-            user = await uRes.json();
-          } else {
-            throw new Error('Sesi Google tidak dapat diverifikasi');
-          }
-        }
-      }
-
-      if (user && user.email) {
-        const safeEmail = user.email.toLowerCase();
-        const profile = await SupabaseAuth.getProfile(user.id);
-        const rawName = profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || safeEmail.split('@')[0];
-        const avatar = user.user_metadata?.avatar_url || (rawName[0] || 'G').toUpperCase();
-
-        const u = {
-          id: user.id,
-          name: rawName,
-          email: safeEmail,
-          passwordHash: '',
-          phone: profile?.phone || user.user_metadata?.phone || user.phone || '',
-          avatar: avatar,
-          role: profile?.role === 'admin' ? 'admin' : 'user',
-          createdAt: user.created_at || new Date().toISOString(),
-        };
-
-        DB.upsertU(u);
-        DB.clearTxCache();
-        const session = {
-          userId: u.id,
-          rememberMe: true,
-          loginAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(),
-        };
-        DB.setSes(session);
-        Auth.cu = u;
-
-        // Bersihkan token dari URL bar
-        window.history.replaceState(null, '', window.location.pathname);
-        return { user: u };
-      }
-    } catch (err) {
-      console.error('❌ [Google OAuth] Error memproses login:', err);
-      throw err;
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw sessionError;
+    const sessionUser = sessionData?.session?.user;
+    if (!sessionUser?.id || !sessionUser.email) {
+      throw new Error('Callback autentikasi tidak menghasilkan sesi pengguna');
     }
-    if (queryParams.has('code')) throw new Error('Callback Google tidak menghasilkan sesi pengguna');
+
+    const { data: userData, error: userError } = await sb.auth.getUser();
+    if (userError) throw userError;
+    if (userData?.user?.id !== sessionUser.id) {
+      throw new Error('Identitas sesi OAuth tidak dapat diverifikasi');
+    }
   }
-  return null;
+
+  const user = await Auth.restoreSupabaseSession();
+  if (isRecovery) {
+    window.history.replaceState(null, '', `${window.location.pathname}?auth=reset-password`);
+    return { recovery: true, user };
+  }
+  if (hasOAuthResponse) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+  return user ? { user } : null;
 }
 
 // Single DOMContentLoaded — entry point

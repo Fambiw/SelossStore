@@ -214,32 +214,23 @@ export const SupabaseAuth = {
     if (!isSupabaseConfigured()) throw new Error('Supabase client belum dikonfigurasi');
 
     const redirectTo = window.location.href.split('#')[0].split('?')[0];
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia untuk login Google');
 
-    try {
-      const sb = await getSupabase();
-      if (sb) {
-        const { data, error } = await sb.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo,
-            queryParams: {
-              access_type: 'offline',
-              prompt: 'consent',
-            },
-          },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-          return;
-        }
-      }
-    } catch (sdkErr) {
-      console.warn('[Supabase SDK Google OAuth Notice, using direct endpoint]:', sdkErr.message);
-    }
-
-    const authUrl = `${SUPABASE_CONFIG.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
-    window.location.href = authUrl;
+    const { data, error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
+      },
+    });
+    if (error) throw error;
+    if (!data?.url) throw new Error('URL autentikasi Google tidak tersedia');
+    window.location.href = data.url;
   },
 
   /**
@@ -508,39 +499,27 @@ export const SupabaseDB = {
   // ------------------------------------------------------
   // TRANSAKSI / PESANAN (TRANSACTIONS)
   // ------------------------------------------------------
-  async getTransactions(userId = null) {
+  async getUserTransactions() {
     const sb = await getSupabase();
     if (!sb) throw new Error('Supabase client belum tersedia');
 
-    let query = sb.from('transactions').select('*').order('created_at', { ascending: false });
-    if (userId) {
-      query = query.eq('user_id', userId);
-    }
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw sessionError;
+    const userId = sessionData?.session?.user?.id;
+    if (!userId) throw new Error('Sesi pengguna tidak tersedia untuk memuat transaksi');
 
-    const { data, error } = await query;
-    if (error) throw error;
+    return loadTransactions(sb.from('transactions').select('*').eq('user_id', userId));
+  },
 
-    return (data || []).map(t => ({
-      id: t.id,
-      userId: t.user_id,
-      userName: t.user_name,
-      userEmail: t.user_email,
-      userWA: t.user_wa,
-      productId: t.product_id,
-      productName: t.product_name,
-      productIcon: t.product_icon,
-      variantId: t.variant_id,
-      variantName: t.variant_name,
-      amount: Number(t.amount || 0),
-      paymentMethod: t.payment_method,
-      formData: t.form_data,
-      proofImage: t.proof_image,
-      status: t.status,
-      paymentStatus: t.payment_status || 'pending',
-      waMessage: t.wa_message,
-      createdAt: t.created_at,
-      updatedAt: t.updated_at,
-    }));
+  async getAdminTransactions() {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Supabase client belum tersedia');
+
+    const { data: isAdmin, error: adminError } = await sb.rpc('is_admin');
+    if (adminError) throw adminError;
+    if (isAdmin !== true) throw new Error('Akses admin diperlukan untuk memuat seluruh pesanan');
+
+    return loadTransactions(sb.from('transactions').select('*'));
   },
 
   async createOrder(tx) {
@@ -595,27 +574,7 @@ export const SupabaseDB = {
 
     const row = Array.isArray(data) ? data[0] : data;
     if (!row) throw new Error('Database tidak mengembalikan pesanan yang tersimpan');
-    return {
-      id: row.id,
-      userId: row.user_id,
-      userName: row.user_name,
-      userEmail: row.user_email,
-      userWA: row.user_wa,
-      productId: row.product_id,
-      productName: row.product_name,
-      productIcon: row.product_icon,
-      variantId: row.variant_id,
-      variantName: row.variant_name,
-      amount: Number(row.amount),
-      paymentMethod: row.payment_method,
-      formData: row.form_data || {},
-      proofImage: row.proof_image,
-      status: row.status,
-      paymentStatus: row.payment_status || 'pending',
-      waMessage: row.wa_message,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return mapTransaction(row);
   },
 
   async getOrderProofUrl(path) {
@@ -644,3 +603,33 @@ export const SupabaseDB = {
     return true;
   },
 };
+
+async function loadTransactions(query) {
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapTransaction);
+}
+
+function mapTransaction(t) {
+  return {
+    id: t.id,
+    userId: t.user_id,
+    userName: t.user_name,
+    userEmail: t.user_email,
+    userWA: t.user_wa,
+    productId: t.product_id,
+    productName: t.product_name,
+    productIcon: t.product_icon,
+    variantId: t.variant_id,
+    variantName: t.variant_name,
+    amount: Number(t.amount || 0),
+    paymentMethod: t.payment_method,
+    formData: t.form_data,
+    proofImage: t.proof_image,
+    status: t.status,
+    paymentStatus: t.payment_status || 'pending',
+    waMessage: t.wa_message,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+  };
+}

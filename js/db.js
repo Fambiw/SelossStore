@@ -136,8 +136,8 @@ export const DB = {
     this.setTxs([savedTx, ...ts.filter(item => item.id !== savedTx.id)]);
     return savedTx;
   },
-  async refreshTxs(userId) {
-    const transactions = await SupabaseDB.getTransactions(userId);
+  async refreshTxs() {
+    const transactions = await SupabaseDB.getUserTransactions();
     this.setTxs(transactions);
     return transactions;
   },
@@ -150,7 +150,7 @@ export const DB = {
   },
 
   /**
-   * Sinkronisasi data cloud dengan Supabase (Produk, Banner, Transaksi)
+   * Sinkronisasi data cloud dengan Supabase (Produk dan Banner)
    */
   async syncWithSupabase() {
     if (!isSupabaseConfigured()) return;
@@ -166,10 +166,6 @@ export const DB = {
       if (cloudBanners && cloudBanners.length > 0) {
         this.s('sl_banners', cloudBanners);
       }
-
-      // 3. Sinkronisasi Transaksi
-      const cloudTxs = await SupabaseDB.getTransactions();
-      this.setTxs(cloudTxs);
 
     } catch (err) {
       console.warn('⚠️ [Supabase Sync] Gagal sinkronisasi data cloud:', err);
