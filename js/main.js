@@ -354,6 +354,10 @@ const Pages={
   app(page,prms){
     if(page!=='home'&&BslTimer){clearInterval(BslTimer);BslTimer=null;}
     const main=$('main');closeSB();
+    const footer=$('site-footer');
+    if(footer)footer.hidden=page==='admin';
+    const footerYear=$('footer-year');
+    if(footerYear)footerYear.textContent=String(new Date().getFullYear());
     if(page==='home')main.innerHTML=this.home();
     else if(page==='detail')main.innerHTML=this.detail(prms);
     else if(page==='checkout')main.innerHTML=this.checkout();
@@ -361,6 +365,7 @@ const Pages={
     else if(page==='reviews')main.innerHTML=this.reviews();
     else if(page==='profile')main.innerHTML=this.profile();
     else if(page==='complete-profile')main.innerHTML=this.completeProfile();
+    else if(['about','faq','terms','privacy','ordering'].includes(page))main.innerHTML=this.info(page);
     else if(page==='admin'){
       if(!Auth.isAdm()){toast('Akses ditolak','error');R.go('home');return;}
       if(!window._admSub) window._admSub='dashboard';
@@ -371,6 +376,37 @@ const Pages={
     if(page==='checkout')this.afterCo();
     if(page==='detail')this.afterDetail(prms);
     if(page==='reviews')loadReviews();
+  },
+
+  info(page){
+    const content={
+      about:`<p>Seloss Store adalah toko online yang menyediakan berbagai kebutuhan digital dalam satu tempat. Kami hadir untuk membantu pengguna menemukan produk digital dengan proses pemesanan yang praktis dan mudah diikuti.</p>
+        <h2>Tujuan Kami</h2><p>Kami ingin membuat akses terhadap kebutuhan digital lebih sederhana melalui informasi produk, pilihan paket, dan alur transaksi yang jelas.</p>
+        <h2>Keunggulan Layanan</h2><ul><li>Pilihan produk dan paket tersedia dalam satu katalog.</li><li>Alur checkout dan pembayaran dipandu langsung di website.</li><li>Pesanan dapat dilihat kembali melalui menu Riwayat Transaksi.</li></ul>
+        <h2>Kategori Produk</h2><p>Katalog mencakup produk digital dalam kategori Semuaan, Larisann, Ngeditann, Streamingann, dan AI-ann. Ketersediaan produk mengikuti informasi yang tampil di katalog.</p>
+        <h2>Komitmen Pelayanan</h2><p>Kami berkomitmen menyajikan informasi transaksi dengan jelas dan menyediakan bantuan melalui Customer Service untuk pertanyaan seputar layanan maupun transaksi.</p>`,
+      faq:`<p>Berikut jawaban singkat untuk pertanyaan yang sering diajukan.</p>
+        <h2>Bagaimana cara memesan?</h2><p>Pilih produk dan paket, lalu ikuti langkah checkout untuk mengisi data, memilih pembayaran, menyelesaikan pembayaran, dan mengirim bukti jika diminta.</p>
+        <h2>Bagaimana cara mengetahui status pesanan?</h2><p>Buka menu Transaksi atau Riwayat Transaksi pada akun Anda untuk melihat pesanan dan status terakhir yang tersedia.</p>
+        <h2>Di mana saya bisa meminta bantuan?</h2><p>Hubungi Customer Service melalui tautan WhatsApp pada bagian Bantuan di footer.</p>
+        <h2>Apa yang perlu dilakukan jika pembayaran belum terverifikasi?</h2><p>Periksa kembali detail pesanan dan bukti pembayaran, lalu hubungi Customer Service dengan informasi transaksi Anda.</p>`,
+      terms:`<p>Dengan menggunakan Seloss Store, Anda menyetujui ketentuan berikut.</p>
+        <h2>Penggunaan layanan</h2><p>Gunakan akun dan layanan untuk pemesanan yang sah. Pastikan data yang dimasukkan saat checkout benar dan dapat dihubungi.</p>
+        <h2>Pemesanan dan pembayaran</h2><p>Periksa produk, paket, dan nominal sebelum menyelesaikan pembayaran. Ikuti instruksi pembayaran dan unggah bukti pembayaran melalui checkout apabila diminta.</p>
+        <h2>Status transaksi dan bantuan</h2><p>Status pesanan dapat diperiksa melalui Riwayat Transaksi. Jika ada kendala, hubungi Customer Service dengan menyertakan informasi pesanan yang relevan.</p>
+        <h2>Perubahan ketentuan</h2><p>Ketentuan dapat diperbarui untuk menyesuaikan layanan. Ketentuan yang berlaku adalah yang ditampilkan pada halaman ini.</p>`,
+      privacy:`<p>Kebijakan ini menjelaskan secara ringkas bagaimana informasi digunakan saat Anda menggunakan Seloss Store.</p>
+        <h2>Informasi yang digunakan</h2><p>Informasi akun dan pemesanan yang Anda berikan, seperti nama, email, nomor kontak, detail transaksi, serta bukti pembayaran jika diunggah, digunakan untuk menjalankan layanan.</p>
+        <h2>Penggunaan informasi</h2><p>Informasi digunakan untuk mengelola akun, memproses dan membantu pesanan, menampilkan riwayat transaksi, serta menanggapi pertanyaan Customer Service.</p>
+        <h2>Pengelolaan informasi</h2><p>Informasi diproses melalui layanan website yang digunakan Seloss Store dan hanya digunakan sejauh diperlukan untuk menjalankan fungsi tersebut. Jangan mengirimkan informasi pembayaran atau data pribadi yang tidak diperlukan.</p>
+        <h2>Kontak</h2><p>Untuk pertanyaan mengenai informasi akun atau transaksi, hubungi Customer Service melalui tautan WhatsApp pada footer.</p>`,
+      ordering:`<p>Ikuti alur checkout yang tersedia di Seloss Store untuk menyelesaikan pesanan.</p>
+        <ol><li>Pilih produk dari katalog, lalu tentukan paket yang ingin dibeli.</li><li>Isi data pemesanan yang diminta dan pilih metode pembayaran yang tersedia.</li><li>Periksa kembali pesanan dan lanjutkan ke instruksi pembayaran.</li><li>Lakukan pembayaran sesuai nominal yang tertera. Setelah itu, pilih tombol untuk mengunggah bukti pembayaran, lalu kirim bukti melalui checkout.</li><li>Pantau status pesanan melalui menu Transaksi atau Riwayat Transaksi.</li></ol>
+        <p>Jika ada kendala pada pembayaran atau status pesanan, hubungi Customer Service melalui tautan WhatsApp pada footer.</p>`
+    };
+    const titles={about:'Tentang Kami',faq:'Pertanyaan Umum (FAQ)',terms:'Syarat & Ketentuan',privacy:'Kebijakan Privasi',ordering:'Panduan Pemesanan'};
+    if(!content[page])return'<section class="info-page"><h1>Informasi tidak ditemukan</h1><a class="info-back" href="#home" onclick="R.go(\'home\');return false">Kembali ke Beranda</a></section>';
+    return`<article class="info-page fade-in"><a class="info-back" href="#home" onclick="R.go('home');return false"><i class="bi bi-arrow-left" aria-hidden="true"></i> Kembali ke Beranda</a><header><h1>${titles[page]}</h1></header><div class="info-copy">${content[page]}</div></article>`;
   },
 
   reviews(){
@@ -1842,7 +1878,7 @@ const R = {
     const authEl = $('auth');
     const appEl  = $('app');
     const AUTH_PAGES  = ['login', 'register', 'forgot', 'reset-password'];
-    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'reviews', 'profile', 'admin', 'complete-profile'];
+    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'reviews', 'profile', 'admin', 'complete-profile', 'about', 'faq', 'terms', 'privacy', 'ordering'];
 
     if (AUTH_PAGES.includes(page)) {
       document.body.classList.remove('adm-layout');
