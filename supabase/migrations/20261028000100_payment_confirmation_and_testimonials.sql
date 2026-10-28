@@ -23,12 +23,13 @@ drop policy if exists payment_status_history_select_admin_or_owner on public.pay
 create policy payment_status_history_select_admin_or_owner
   on public.payment_status_history for select to authenticated
   using (
-    changed_by = (select auth.uid())
+    changed_by::text = (select auth.uid())::text
     or (select public.is_admin())
     or exists (
       select 1
       from public.transactions t
-      where t.id = transaction_id and t.user_id = (select auth.uid())
+      where t.id::text = payment_status_history.transaction_id::text
+        and t.user_id::text = (select auth.uid())::text
     )
   );
 
