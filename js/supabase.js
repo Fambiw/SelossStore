@@ -356,6 +356,106 @@ export const SupabaseDB = {
     return data;
   },
 
+  async getTestimonials() {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Testimoni memerlukan database Supabase.');
+    const { data, error } = await sb
+      .from('testimonials')
+      .select('id, image_path, alt_text, created_at, updated_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const testimonials = [];
+    for (const item of data || []) {
+      const { data: signedData, error: signedError } = await sb.storage
+        .from('testimonials')
+        .createSignedUrl(item.image_path, 3600);
+      if (signedError) throw signedError;
+      if (!signedData?.signedUrl) throw new Error('Tautan testimoni tidak tersedia');
+      testimonials.push({
+        id: item.id,
+        imagePath: item.image_path,
+        imageUrl: signedData.signedUrl,
+        altText: item.alt_text || 'Testimoni pembayaran Seloss Store',
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      });
+    }
+    return testimonials;
+  },
+
+  async uploadTestimonial(file) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Testimoni memerlukan database Supabase.');
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has(file?.type) || file.size > 10 * 1024 * 1024) {
+      throw new Error('Testimoni harus berupa JPG, PNG, atau WEBP maksimal 10MB');
+    }
+    const extension = file.type.split('/')[1].replace('jpeg', 'jpg');
+    const path = `${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await sb.storage
+      .from('testimonials')
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) throw uploadError;
+    try {
+      const { data, error } = await sb
+        .from('testimonials')
+        .insert({ image_path: path })
+        .select('id, image_path, alt_text, created_at, updated_at')
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      const { error: cleanupError } = await sb.storage.from('testimonials').remove([path]);
+      if (cleanupError) console.error('[Supabase Storage] Gagal membersihkan testimoni:', cleanupError);
+      throw error;
+    }
+  },
+
+  async deleteTestimonial(id, imagePath) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Testimoni memerlukan database Supabase.');
+    const { data, error } = await sb.from('testimonials').delete().eq('id', id).select('id, image_path').single();
+    if (error) throw error;
+    const path = imagePath || data?.image_path;
+    if (path) {
+      const { error: storageError } = await sb.storage.from('testimonials').remove([path]);
+      if (storageError) throw storageError;
+    }
+    return true;
+  },
+
+  async updateTestimonialImage(id, oldImagePath, file) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Koneksi Supabase tidak tersedia. Testimoni memerlukan database Supabase.');
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has(file?.type) || file.size > 10 * 1024 * 1024) {
+      throw new Error('Testimoni harus berupa JPG, PNG, atau WEBP maksimal 10MB');
+    }
+    const extension = file.type.split('/')[1].replace('jpeg', 'jpg');
+    const newPath = `${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await sb.storage.from('testimonials').upload(newPath, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    if (uploadError) throw uploadError;
+    try {
+      const { error } = await sb.from('testimonials').update({
+        image_path: newPath,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id);
+      if (error) throw error;
+      if (oldImagePath) {
+        const { error: removeError } = await sb.storage.from('testimonials').remove([oldImagePath]);
+        if (removeError) console.error('[Supabase Storage] Gagal membersihkan gambar testimoni lama:', removeError);
+      }
+      return true;
+    } catch (error) {
+      const { error: cleanupError } = await sb.storage.from('testimonials').remove([newPath]);
+      if (cleanupError) console.error('[Supabase Storage] Gagal membersihkan testimoni baru:', cleanupError);
+      throw error;
+    }
+  },
+
   // ------------------------------------------------------
   // PRODUK (PRODUCTS)
   // ------------------------------------------------------
@@ -602,6 +702,16 @@ export const SupabaseDB = {
     if (!data?.length) throw new Error('Pesanan tidak ditemukan atau akses ditolak');
     return true;
   },
+
+  async confirmPayment(id) {
+    const sb = await getSupabase();
+    if (!sb) throw new Error('Supabase client belum tersedia');
+    const { data, error } = await sb.rpc('confirm_payment', { p_transaction_id: id });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error('Database tidak mengonfirmasi pembayaran berhasil diverifikasi');
+    return mapTransaction(row);
+  },
 };
 
 async function loadTransactions(query) {
@@ -631,5 +741,7 @@ function mapTransaction(t) {
     waMessage: t.wa_message,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
+    paymentVerifiedAt: t.payment_verified_at,
+    paymentVerifiedBy: t.payment_verified_by,
   };
 }

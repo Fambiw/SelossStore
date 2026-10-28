@@ -148,6 +148,12 @@ export const DB = {
       ? { ...tx, status, updatedAt: new Date().toISOString() }
       : tx));
   },
+  async confirmPayment(id) {
+    if (!isSupabaseConfigured()) throw new Error('Supabase belum dikonfigurasi; pembayaran tidak dapat diverifikasi');
+    const savedTx = await SupabaseDB.confirmPayment(id);
+    this.setTxs(this.txs().map(tx => tx.id === id ? savedTx : tx));
+    return savedTx;
+  },
 
   /**
    * Sinkronisasi data cloud dengan Supabase (Produk dan Banner)

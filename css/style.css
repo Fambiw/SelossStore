@@ -1004,9 +1004,32 @@
    .review-reply-form textarea{min-height:105px}
    .review-reply-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin-top:10px}
    .review-reply-actions .btn-pr{padding:9px 15px;font-size:.78rem}
+   .testimonial-page{width:min(100%,1100px);margin:0 auto;padding:8px 0 36px}
+   .testimonial-carousel{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:12px}
+   .testimonial-track{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 2px 14px}
+   .testimonial-track::-webkit-scrollbar{display:none}
+   .testimonial-card{flex:0 0 min(72%,300px);aspect-ratio:9/16;margin:0;overflow:hidden;border:1px solid var(--gy4);border-radius:var(--r3);background:var(--wh);box-shadow:var(--sh);scroll-snap-align:center}
+   .testimonial-card img{display:block;width:100%;height:100%;object-fit:cover}
+   .testimonial-nav{width:42px;height:42px;border:1px solid var(--gy4);border-radius:50%;background:var(--wh);color:var(--pr);font-size:1.1rem;cursor:pointer;box-shadow:var(--sh);transition:var(--tr)}
+   .testimonial-nav:hover{border-color:var(--pr);background:var(--pr-l)}
+   .testimonial-admin-note{margin:0 0 18px;color:var(--gy);font-size:.82rem}
+   .testimonial-admin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+   .testimonial-admin-card{display:flex;flex-direction:column;gap:10px;padding:10px;border:1px solid var(--gy4);border-radius:var(--r2);background:var(--wh)}
+   .testimonial-admin-card img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:var(--r1);background:var(--gy5)}
+   .testimonial-admin-card .adm-abtn{align-self:stretch}
+   .payment-status{display:inline-flex;padding:4px 8px;border-radius:50px;font-size:.7rem;font-weight:700;text-transform:capitalize}
+   .payment-paid{background:var(--ok-l);color:#047857}
+   .payment-pending{background:var(--warn-l);color:#b45309}
+   .payment-confirm-box{margin-top:14px;padding:14px;border:1px solid rgba(16,185,129,.3);border-radius:var(--r1);background:var(--ok-l);color:#047857}
+   .payment-confirm-box strong{font-size:.82rem}
+   .payment-confirm-box p{margin:5px 0 10px;font-size:.76rem}
+   .payment-confirm-box .adm-btn-ok{border:0}
    @media(max-width:767px){
       .review-grid{grid-template-columns:1fr}
       .review-heading{align-items:flex-start}
+      .testimonial-carousel{grid-template-columns:34px minmax(0,1fr) 34px;gap:6px}
+      .testimonial-nav{width:34px;height:34px}
+      .testimonial-card{flex-basis:82%}
    }
    @media(max-width:560px){
       .review-heading{flex-direction:column}

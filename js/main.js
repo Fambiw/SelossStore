@@ -122,6 +122,7 @@ function updNav(){
   if(pg==='home'){$('sbi-home')?.classList.add('act')}
   else if(pg==='history'){$('sbi-hist')?.classList.add('act')}
   else if(pg==='reviews'){$('sbi-reviews')?.classList.add('act')}
+  else if(pg==='testimonials'){$('sbi-testimonials')?.classList.add('act')}
   else if(pg==='profile'){$('sb-profile')?.classList.add('act')}
   else if(pg==='admin'){
     const sub=window._admSub||'dashboard';
@@ -133,7 +134,7 @@ function updNav(){
   if(srch){
     if(pg==='admin'){
       const sub=window._admSub||'dashboard';
-      const ph={dashboard:'Dashboard — statistik penjualan',products:'Cari produk...',orders:'Cari pesanan, pembeli...',banners:'Kelola banner promosi...'};
+      const ph={dashboard:'Dashboard — statistik penjualan',products:'Cari produk...',orders:'Cari pesanan, pembeli...',banners:'Kelola banner promosi...',testimonials:'Kelola testimoni...'};
       srch.placeholder=ph[sub]||'Cari...';
     } else {
       srch.placeholder='Cari produk...';
@@ -363,6 +364,7 @@ const Pages={
     else if(page==='checkout')main.innerHTML=this.checkout();
     else if(page==='history')main.innerHTML=this.hist();
     else if(page==='reviews')main.innerHTML=this.reviews();
+    else if(page==='testimonials')main.innerHTML=this.testimonials();
     else if(page==='profile')main.innerHTML=this.profile();
     else if(page==='complete-profile')main.innerHTML=this.completeProfile();
     else if(['about','faq','terms','privacy','ordering'].includes(page))main.innerHTML=this.info(page);
@@ -653,7 +655,7 @@ const Pages={
       <div class="tx-ico">${tx.productIcon?`<img src="${tx.productIcon}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:'<i class="bi bi-box-seam" aria-hidden="true"></i>'}</div>
       <div class="tx-inf"><div class="tx-nm">${esc(tx.productName)}</div>
       <div class="tx-sub">${esc(tx.variantName)} • ${fdt(tx.createdAt)}</div>
-      </div><div class="tx-rt"><div class="tx-amt">${fmt(tx.amount)}</div><div style="margin-top:4px">${sbdg(tx.status)}</div></div></div>`).join('')}</div>`}
+      </div><div class="tx-rt"><div class="tx-amt">${fmt(tx.amount)}</div><div style="margin-top:4px">${sbdg(tx.status)}</div><div class="payment-status ${tx.paymentStatus==='paid'?'payment-paid':'payment-pending'}" style="margin-top:4px">${esc(tx.paymentStatus||'pending')}</div></div></div>`).join('')}</div>`}
     <div class="tx-modal" id="tx-modal"><div class="tx-mc" id="tx-mc"></div></div>`;
   },
 
@@ -698,6 +700,17 @@ const Pages={
     </section>`;
   },
 
+  testimonials(){
+    const state = window._testimonialState || {loading:true, error:'', items:[]};
+    if(state.loading) return `<section class="testimonial-page"><div class="empty-st" role="status"><span class="ei"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span><h3>Memuat testimoni...</h3></div></section>`;
+    if(state.error) return `<section class="testimonial-page"><header class="review-heading"><div><h1>Testimoni</h1><p>Bukti pembayaran dari pelanggan Seloss Store.</p></div></header><div class="empty-st" role="alert"><span class="ei"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><h3>Testimoni tidak dapat dimuat</h3><p>${esc(state.error)}</p><button class="btn-pr" onclick="loadTestimonials()">Coba lagi</button></div></section>`;
+    return `<section class="testimonial-page">
+      <header class="review-heading"><div><h1>Testimoni</h1><p>Bukti pembayaran dari pelanggan Seloss Store.</p></div></header>
+      ${state.items.length ? `<div class="testimonial-carousel"><button class="testimonial-nav" type="button" onclick="moveTestimonial(-1)" aria-label="Testimoni sebelumnya"><i class="bi bi-chevron-left"></i></button><div class="testimonial-track" id="testimonial-track">${state.items.map(item => `<figure class="testimonial-card"><img src="${esc(item.imageUrl)}" alt="${esc(item.altText)}" loading="lazy"></figure>`).join('')}</div><button class="testimonial-nav" type="button" onclick="moveTestimonial(1)" aria-label="Testimoni berikutnya"><i class="bi bi-chevron-right"></i></button></div>` :
+      `<div class="empty-st"><span class="ei"><i class="bi bi-images" aria-hidden="true"></i></span><h3>Belum ada testimoni</h3><p>Testimoni akan tampil setelah admin mengunggah bukti pembayaran yang tersedia.</p></div>`}
+    </section>`;
+  },
+
   // ADMIN — 4-menu panel
   admin(){
     if(!Auth.isAdm()){return''}
@@ -705,6 +718,7 @@ const Pages={
     if(sub === 'products') return this.adminProducts();
     if(sub === 'orders')   return this.adminOrders();
     if(sub === 'banners')  return this.adminBanners();
+    if(sub === 'testimonials') return this.adminTestimonials();
     return this.adminDashboard();
   },
 
@@ -855,6 +869,7 @@ const Pages={
     const loadState = window._admOrdersState || 'loading';
     const q = (window._admOrdQ||'').toLowerCase();
     const sf = window._admOrdFilter || 'all';
+    const pf = window._admPaymentFilter || 'all';
     let filtered = allTxs;
     if(q) filtered = filtered.filter(t =>
       t.id.toLowerCase().includes(q) ||
@@ -864,6 +879,7 @@ const Pages={
       (t.userWA||'').includes(q)
     );
     if(sf !== 'all') filtered = filtered.filter(t => t.status === sf);
+    if(pf === 'pending') filtered = filtered.filter(t => t.paymentStatus === 'pending');
     const statusOpts = [{v:'all',l:'Semua Status'},{v:'pending',l:'Menunggu'},{v:'confirmed',l:'Dikonfirmasi'},{v:'processing',l:'Diproses'},{v:'done',l:'Selesai'},{v:'cancelled',l:'Dibatalkan'}];
 
     return `<div class="adm-page">
@@ -881,6 +897,10 @@ const Pages={
         </div>
         <select class="adm-select" onchange="admOrdFilter(this.value)">
           ${statusOpts.map(o=>`<option value="${o.v}" ${sf===o.v?'selected':''}>${o.l}</option>`).join('')}
+        </select>
+        <select class="adm-select" onchange="admPaymentFilter(this.value)">
+          <option value="all" ${pf==='all'?'selected':''}>Semua Pembayaran</option>
+          <option value="pending" ${pf==='pending'?'selected':''}>Butuh Konfirmasi Pembayaran</option>
         </select>
         <button class="adm-btn-sec" type="button" onclick="refreshAdminOrders()" ${loadState==='loading'?'disabled':''}>
           <i class="bi bi-arrow-clockwise"></i> Muat ulang
@@ -907,7 +927,7 @@ const Pages={
                   <td style="font-size:.75rem">${esc(tx.userEmail||'-')}</td>
                   <td style="font-size:.8rem">${esc(pm?.name||tx.paymentMethod||'-')}</td>
                   <td style="font-weight:700;color:var(--pr);font-size:.85rem">${fmt(tx.amount)}</td>
-                  <td>${esc(tx.paymentStatus||'pending')}</td>
+                  <td><span class="payment-status ${tx.paymentStatus==='paid'?'payment-paid':'payment-pending'}">${esc(tx.paymentStatus||'pending')}</span></td>
                   <td>${sbdg(tx.status)}</td>
                   <td style="font-size:.73rem;color:var(--gy);white-space:nowrap">${fdt(tx.createdAt)}</td>
                   <td><div class="adm-act-btns">
@@ -970,6 +990,16 @@ const Pages={
     </div>
     <div class="adm-modal-ov" id="adm-bnr-modal" style="display:none" onclick="if(event.target===this)admCloseBnrModal()"><div class="adm-modal" id="adm-bnr-modal-inner"></div></div>
     <div class="adm-modal-ov" id="adm-bnr-del-modal" style="display:none" onclick="if(event.target===this)admCloseBnrDelModal()"><div class="adm-modal adm-modal-sm" id="adm-bnr-del-modal-inner"></div></div>`;
+  },
+
+  adminTestimonials(){
+    const state = window._testimonialState || {loading:true, error:'', items:[]};
+    return `<div class="adm-page"><div class="adm-page-hdr"><div class="adm-page-hdr-left"><button class="adm-mob-toggle" onclick="tglSB()" aria-label="Buka menu"><i class="bi bi-list"></i></button><h1 class="adm-page-title"><i class="bi bi-images"></i> Testimoni</h1></div><button class="adm-btn-primary" type="button" onclick="triggerTestimonialUpload()"><i class="bi bi-plus-lg"></i> Tambah Testimoni</button></div>
+      <div class="adm-card"><p class="testimonial-admin-note">Unggah screenshot bukti pembayaran asli. Format JPG, PNG, atau WEBP, maksimal 10MB.</p><input id="testimonial-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="handleTestimonialFile(event)">
+      ${state.loading ? `<div class="adm-empty"><i class="bi bi-arrow-repeat" style="font-size:2.5rem;color:var(--pr)"></i><p>Memuat testimoni...</p></div>` :
+        state.error ? `<div class="adm-empty" role="alert"><i class="bi bi-exclamation-triangle" style="font-size:2.5rem;color:var(--ac)"></i><p>${esc(state.error)}</p><button class="adm-btn-primary" onclick="loadTestimonials()">Coba lagi</button></div>` :
+        state.items.length ? `<div class="testimonial-admin-grid">${state.items.map(item => `<article class="testimonial-admin-card"><img src="${esc(item.imageUrl)}" alt="${esc(item.altText)}"><input id="testimonial-edit-${item.id}" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="handleTestimonialEdit(event,'${item.id}','${esc(item.imagePath)}')"><button class="adm-abtn" type="button" onclick="document.getElementById('testimonial-edit-${item.id}')?.click()"><i class="bi bi-pencil"></i> Ganti Gambar</button><button class="adm-abtn ab-del" type="button" onclick="deleteTestimonial('${item.id}','${esc(item.imagePath)}')"><i class="bi bi-trash"></i> Hapus</button></article>`).join('')}</div>` :
+        `<div class="adm-empty"><i class="bi bi-images" style="font-size:2.5rem;color:var(--gy3)"></i><p>Belum ada testimoni tersimpan.</p><button class="adm-btn-primary" onclick="triggerTestimonialUpload()">Tambah Testimoni</button></div>`}</div></div>`;
   },
 
 };
@@ -1077,6 +1107,81 @@ const ReviewState = {
   replyDraft: '',
   replySaving: false,
 };
+
+window._testimonialState = { loading: false, error: '', items: [] };
+let testimonialIndex = 0;
+
+async function loadTestimonials() {
+  if (!Auth.cu?.id || !['testimonials', 'admin'].includes(R.cur)) return;
+  const expectedUserId = Auth.cu.id;
+  window._testimonialState = { ...window._testimonialState, loading: true, error: '' };
+  if (R.cur === 'testimonials') $('main').innerHTML = Pages.testimonials();
+  try {
+    if (R.cur === 'admin' && !await Auth.verifyAdmin()) throw new Error('Akses admin diperlukan');
+    window._testimonialState.items = await SupabaseDB.getTestimonials();
+    window._testimonialState.loading = false;
+    testimonialIndex = 0;
+  } catch (err) {
+    console.error('[Testimonials] Gagal memuat testimoni:', err);
+    if (Auth.cu?.id !== expectedUserId) return;
+    window._testimonialState = { ...window._testimonialState, loading: false, error: err.message || 'Periksa koneksi dan akses database.' };
+  }
+  if (Auth.cu?.id !== expectedUserId) return;
+  if (R.cur === 'testimonials') $('main').innerHTML = Pages.testimonials();
+  if (R.cur === 'admin' && window._admSub === 'testimonials') $('main').innerHTML = Pages.admin();
+}
+
+function moveTestimonial(direction) {
+  const items = window._testimonialState?.items || [];
+  if (!items.length) return;
+  testimonialIndex = (testimonialIndex + direction + items.length) % items.length;
+  $('testimonial-track')?.scrollTo({ left: testimonialIndex * ($('testimonial-track').clientWidth * 0.72), behavior: 'smooth' });
+}
+
+function triggerTestimonialUpload() {
+  if (!Auth.isAdm()) { toast('Akses admin ditolak', 'error'); return; }
+  $('testimonial-file-input')?.click();
+}
+
+async function handleTestimonialFile(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    await SupabaseDB.uploadTestimonial(file);
+    toast('Testimoni berhasil diunggah');
+    await loadTestimonials();
+  } catch (err) {
+    console.error('[Testimonials] Gagal mengunggah testimoni:', err);
+    toast(err.message || 'Testimoni gagal diunggah', 'error');
+  }
+}
+
+async function deleteTestimonial(id, imagePath) {
+  if (!Auth.isAdm() || !window.confirm('Hapus testimoni ini?')) return;
+  try {
+    await SupabaseDB.deleteTestimonial(id, imagePath);
+    toast('Testimoni berhasil dihapus');
+    await loadTestimonials();
+  } catch (err) {
+    console.error('[Testimonials] Gagal menghapus testimoni:', err);
+    toast(err.message || 'Testimoni gagal dihapus', 'error');
+  }
+
+  async function handleTestimonialEdit(event, id, imagePath) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      await SupabaseDB.updateTestimonialImage(id, imagePath, file);
+      toast('Testimoni berhasil diperbarui');
+      await loadTestimonials();
+    } catch (err) {
+      console.error('[Testimonials] Gagal memperbarui testimoni:', err);
+      toast(err.message || 'Testimoni gagal diperbarui', 'error');
+    }
+  }
+}
 
 function renderReviewStars(rating) {
   return `<span class="review-stars" aria-label="${Number(rating)} dari 5 bintang">${[1, 2, 3, 4, 5]
@@ -1922,7 +2027,8 @@ const R = {
           DB.hideTxCache();
           if (window._admSub === 'orders') window._admOrdersState = 'loading';
           Pages.app(page, params);
-          refreshAdminOrders();
+          if (window._admSub === 'testimonials') loadTestimonials();
+          else refreshAdminOrders();
         }).catch(err => {
           console.error('[Auth] Gagal memverifikasi hak akses admin:', err);
           toast('Hak akses admin tidak dapat diverifikasi. Silakan coba lagi.','error');
@@ -1942,12 +2048,16 @@ const R = {
           replyDraft: '', replySaving: false,
         });
       }
+      if (page === 'testimonials') {
+        window._testimonialState = { loading: true, error: '', items: [] };
+      }
       if (authEl) authEl.style.display = 'none';
       if (appEl)  appEl.style.display  = 'flex';
       document.body.classList.toggle('adm-layout', page === 'admin');
       updNav();
       Pages.app(page, params);
       if (page === 'history') refreshUserTransactions();
+      if (page === 'testimonials') loadTestimonials();
     }
   }
 };
@@ -2148,12 +2258,20 @@ function initApp() {
   window.finishPasswordReset = finishPasswordReset;
   window.saveCompleteProfile = saveCompleteProfile;
   window.refreshAdminOrders = refreshAdminOrders;
+  window.admPaymentFilter = admPaymentFilter;
+  window.admPaymentConfirm = admPaymentConfirm;
   window.selectTheme      = selectTheme;
   window.admWA             = admWA;
   window.showTxD           = showTxD;
   window.closeTxM          = closeTxM;
   window.saveProf          = saveProf;
   window.loadReviews       = loadReviews;
+  window.loadTestimonials  = loadTestimonials;
+  window.moveTestimonial   = moveTestimonial;
+  window.triggerTestimonialUpload = triggerTestimonialUpload;
+  window.handleTestimonialFile = handleTestimonialFile;
+  window.deleteTestimonial = deleteTestimonial;
+  window.handleTestimonialEdit = handleTestimonialEdit;
   window.openReviewForm    = openReviewForm;
   window.backToReviews     = backToReviews;
   window.setReviewRating   = setReviewRating;
@@ -2405,6 +2523,12 @@ function admOrdFilter(f){
   main.innerHTML=Pages.admin();
 }
 
+function admPaymentFilter(f){
+  window._admPaymentFilter = f;
+  const main=$('main');if(!main)return;
+  main.innerHTML=Pages.admin();
+}
+
 async function admOrdDetail(txId){
   const tx=DB.txs().find(t=>t.id===txId);if(!tx)return;
   const requestingUserId = Auth.cu?.id;
@@ -2430,6 +2554,7 @@ async function admOrdDetail(txId){
 
   // Valid status transitions
   const canConfirm = tx.status==='pending';
+  const canVerifyPayment = tx.paymentStatus==='pending' && Boolean(tx.proofImage);
   const canProcess = tx.status==='confirmed';
   const canDone    = tx.status==='processing'||tx.status==='confirmed';
   const canCancel  = !['done','cancelled'].includes(tx.status);
@@ -2471,8 +2596,35 @@ async function admOrdDetail(txId){
         ${canDone?`<button class="adm-btn-ok" onclick="admOrdUpdate('${tx.id}','done')"><i class="bi bi-check-all"></i> Selesaikan</button>`:''}
         ${canCancel?`<button class="adm-btn-danger" onclick="admOrdCancelConfirm('${tx.id}')"><i class="bi bi-x-lg"></i> Batalkan</button>`:''}
       </div>`:''}
+      ${canVerifyPayment?`<div class="payment-confirm-box"><strong><i class="bi bi-shield-check"></i> Bukti pembayaran tersedia</strong><p>Verifikasi hanya setelah nominal dan tujuan pembayaran sesuai.</p><button class="adm-btn-ok" onclick="admPaymentConfirm('${tx.id}')"><i class="bi bi-check2-circle"></i> Konfirmasi Pembayaran Diterima</button></div>`:
+      tx.paymentStatus==='pending'&&!tx.proofImage?`<div class="adm-info-box" style="margin-top:14px"><i class="bi bi-info-circle"></i> Pembayaran masih pending karena bukti pembayaran belum tersedia.</div>`:''}
     </div>`;
   modal.style.display='flex';
+}
+
+async function admPaymentConfirm(txId){
+  if (window._admPaymentUpdatingId) return;
+  const tx = DB.txs().find(item => item.id === txId);
+  if (!tx || tx.paymentStatus !== 'pending' || !tx.proofImage) {
+    toast('Pembayaran belum memiliki bukti yang dapat diverifikasi','warning');
+    return;
+  }
+  window._admPaymentUpdatingId = txId;
+  try {
+    const savedTx = await DB.confirmPayment(txId);
+    toast('Pembayaran berhasil diverifikasi. Status pesanan tetap terpisah.','success');
+    if (R.cur === 'admin' && Auth.isAdm()) {
+      admCloseOrdModal();
+      admCloseConfirmModal();
+      renderAdminAfterOrderUpdate();
+    }
+    return savedTx;
+  } catch (err) {
+    console.error('[Orders] Gagal memverifikasi pembayaran:', err);
+    toast(err.message || 'Pembayaran tidak dapat diverifikasi','error');
+  } finally {
+    window._admPaymentUpdatingId = null;
+  }
 }
 
 async function admOrdUpdate(txId, newSt){
