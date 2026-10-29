@@ -1167,19 +1167,19 @@ async function deleteTestimonial(id, imagePath) {
     console.error('[Testimonials] Gagal menghapus testimoni:', err);
     toast(err.message || 'Testimoni gagal dihapus', 'error');
   }
+}
 
-  async function handleTestimonialEdit(event, id, imagePath) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    try {
-      await SupabaseDB.updateTestimonialImage(id, imagePath, file);
-      toast('Testimoni berhasil diperbarui');
-      await loadTestimonials();
-    } catch (err) {
-      console.error('[Testimonials] Gagal memperbarui testimoni:', err);
-      toast(err.message || 'Testimoni gagal diperbarui', 'error');
-    }
+async function handleTestimonialEdit(event, id, imagePath) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    await SupabaseDB.updateTestimonialImage(id, imagePath, file);
+    toast('Testimoni berhasil diperbarui');
+    await loadTestimonials();
+  } catch (err) {
+    console.error('[Testimonials] Gagal memperbarui testimoni:', err);
+    toast(err.message || 'Testimoni gagal diperbarui', 'error');
   }
 }
 
