@@ -1983,7 +1983,7 @@ const R = {
     const authEl = $('auth');
     const appEl  = $('app');
     const AUTH_PAGES  = ['login', 'register', 'forgot', 'reset-password'];
-    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'reviews', 'profile', 'admin', 'complete-profile', 'about', 'faq', 'terms', 'privacy', 'ordering'];
+    const APP_PAGES   = ['home', 'detail', 'checkout', 'history', 'reviews', 'testimonials', 'profile', 'admin', 'complete-profile', 'about', 'faq', 'terms', 'privacy', 'ordering'];
 
     if (AUTH_PAGES.includes(page)) {
       document.body.classList.remove('adm-layout');
